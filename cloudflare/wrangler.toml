@@ -1,0 +1,7 @@
+name            = "arkx-proxy"
+main            = "worker.js"
+compatibility_date = "2024-05-01"
+
+# Set secret via CLI (jangan hardcode di sini):
+#   npx wrangler secret put WORKER_SECRET
+# Lalu masukkan nilai yang sama ke CF_WORKER_SECRET di .env ARKX
