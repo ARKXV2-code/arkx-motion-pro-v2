@@ -49,8 +49,11 @@ async function register(email, name, password) {
   email = email.toLowerCase().trim();
   if (users.find(u => u.email === email)) throw new Error('Email sudah terdaftar');
   const user = {
-    id: _id(), email, name, role: 'user', status: 'pending',
-    password: _hash(password), createdAt: new Date().toISOString(), lastLogin: null,
+    id: _id(), email, name, role: 'user',
+    status: 'pending',  // harus di-approve admin
+    plan: 'free',       // free | pro | enterprise
+    password: _hash(password),
+    createdAt: new Date().toISOString(), lastLogin: null,
   };
   users.push(user);
   await _save();
@@ -91,6 +94,13 @@ async function changePassword(userId, oldPass, newPass) {
   if (newPass.length < 6) throw new Error('Password baru minimal 6 karakter');
   u.password = _hash(newPass);
   await _save();
+}
+
+async function setPlan(userId, plan) {
+  const u = _find(userId);
+  u.plan = plan; // free | pro | enterprise
+  await _save();
+  return _safe(u);
 }
 
 function getAll()     { return users.map(_safe); }
@@ -137,6 +147,6 @@ async function _save() {
 
 module.exports = {
   init, register, login, verifyToken,
-  approve, reject, ban, deleteUser, changePassword,
+  approve, reject, ban, deleteUser, changePassword, setPlan,
   getAll, getPending, getById, ADMIN_EMAIL,
 };
