@@ -1,26 +1,29 @@
 /**
- * Queue Service — concurrency 3, retry, realtime status
+ * Queue Service — concurrency 3, smart retry, realtime status
  */
 const PQueue = require('p-queue').default;
 const { v4: uuid } = require('uuid');
 const log = require('./logger');
 
 let q;
-const active    = new Map();   // taskId → item
-const completed = [];          // recent 100
+const active    = new Map();
+const completed = [];
 const MAX_DONE  = 100;
 
 function init() {
-  q = new PQueue({ concurrency: 3, interval: 1000, intervalCap: 3 });
-  q.on('active', () => _broadcast());
-  q.on('idle',   () => { log.queue('Queue idle'); _broadcast(); });
+  q = new PQueue({ concurrency: 3 });
+  q.on('idle', () => { log.queue('Queue idle'); _broadcast(); });
   log.info('Queue ready (concurrency:3)');
 }
 
 function add(fn, meta = {}) {
   const id   = uuid();
-  const item = { id, status:'queued', meta, createdAt: new Date().toISOString(),
-                 startedAt:null, doneAt:null, result:null, error:null, retries:0 };
+  const item = {
+    id, status:'queued', meta,
+    createdAt: new Date().toISOString(),
+    startedAt: null, doneAt: null,
+    result: null, error: null, retries: 0,
+  };
   active.set(id, item);
   _broadcast();
   log.queue(`📥 Queued: ${id.slice(0,8)} [${meta.type||'?'}]`);
@@ -31,25 +34,24 @@ function add(fn, meta = {}) {
     _broadcast();
     log.queue(`▶️ Running: ${id.slice(0,8)}`);
 
-    const MAX_RETRY = meta.maxRetry || 3;
-    let lastErr;
-    for (let i = 0; i <= MAX_RETRY; i++) {
-      try {
-        if (i > 0) { item.retries = i; log.retry(`🔄 Retry ${i}/${MAX_RETRY} — ${id.slice(0,8)}`); await sleep(2000*i); }
-        const result = await fn();
-        item.status = 'done'; item.doneAt = new Date().toISOString(); item.result = result;
-        _done(id, item); _broadcast();
-        log.success(`✅ Done: ${id.slice(0,8)}`);
-        return result;
-      } catch (e) {
-        lastErr = e;
-        log.error(`❌ Error (attempt ${i+1}): ${e.message}`);
-        if (/401|403|Unauthorized|No active API key/i.test(e.message)) break;
-      }
+    try {
+      const result = await fn();
+      item.status = 'done';
+      item.doneAt = new Date().toISOString();
+      item.result = result;
+      _done(id, item);
+      _broadcast();
+      log.success(`✅ Done: ${id.slice(0,8)}`);
+      return result;
+    } catch(e) {
+      item.status = 'failed';
+      item.doneAt = new Date().toISOString();
+      item.error  = e.message;
+      _done(id, item);
+      _broadcast();
+      log.error(`❌ Failed: ${id.slice(0,8)} — ${e.message}`);
+      throw e;
     }
-    item.status = 'failed'; item.doneAt = new Date().toISOString(); item.error = lastErr?.message;
-    _done(id, item); _broadcast();
-    throw lastErr;
   });
 
   return { id, promise };
@@ -60,6 +62,7 @@ function status() {
     pending:   q ? q.size    : 0,
     running:   q ? q.pending : 0,
     active:    [...active.values()],
+    queued:    [...active.values()].filter(i => i.status === 'queued'),
     completed: completed.slice(0, 20),
   };
 }

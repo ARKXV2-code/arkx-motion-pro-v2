@@ -3,7 +3,9 @@ const fs     = require('fs-extra');
 const path   = require('path');
 const log    = require('../services/logger');
 
-const SETTINGS_FILE = path.join(__dirname, '../data/settings.json');
+const SETTINGS_FILE = process.env.RAILWAY_VOLUME_MOUNT_PATH
+  ? require('path').join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'data', 'settings.json')
+  : require('path').join(__dirname, '../data/settings.json');
 
 // Load saved settings on startup
 async function loadSavedSettings() {

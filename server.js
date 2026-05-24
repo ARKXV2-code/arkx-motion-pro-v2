@@ -64,7 +64,12 @@ app.use((err, req, res, next) => {
 
 // ── Boot ─────────────────────────────────────────────────────
 async function boot() {
-  await fs.ensureDir(path.join(__dirname, 'data'));
+  // Support Railway Volume untuk persistent storage
+  const dataDir = process.env.RAILWAY_VOLUME_MOUNT_PATH
+    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'data')
+    : path.join(__dirname, 'data');
+
+  await fs.ensureDir(dataDir);
   await fs.ensureDir(path.join(__dirname, 'tmp'));
 
   await require('./services/keyStore').init();
@@ -72,17 +77,23 @@ async function boot() {
   await require('./services/authStore').init();
   require('./services/queue').init();
 
-  // Telegram (opsional)
   if (process.env.TELEGRAM_BOT_TOKEN) {
     require('./services/telegram').init(process.env.TELEGRAM_BOT_TOKEN);
   }
 
   const PORT = process.env.PORT || 3000;
-  server.listen(PORT, () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n⚡ ARKX Motion Pro V2`);
-    console.log(`🌐 http://localhost:${PORT}`);
-    console.log(`🔗 CF Worker: ${process.env.CF_WORKER_URL || '⚠️  Belum diset di .env'}\n`);
+    console.log(`🌐 http://0.0.0.0:${PORT}`);
+    console.log(`📁 Data: ${dataDir}`);
+    console.log(`🔗 Magnific: api.magnific.com\n`);
   });
 }
 
-boot().catch(console.error);
+boot().catch(err => { console.error('Boot failed:', err); process.exit(1); });
+
+// Graceful shutdown
+process.on('SIGTERM', () => { console.log('SIGTERM'); server.close(() => process.exit(0)); });
+process.on('SIGINT',  () => { console.log('SIGINT');  server.close(() => process.exit(0)); });
+process.on('uncaughtException',  err => console.error('Uncaught:', err.message));
+process.on('unhandledRejection', err => console.error('Unhandled:', String(err)));
