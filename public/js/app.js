@@ -539,12 +539,10 @@ function addTask(qId,model,prompt,type,containerId) {
 }
 
 function onProgress(m) {
-  // Match by apiTaskId atau qId
   S.tasks.forEach(t=>{
-    if(t.qId===m.taskId || t.apiTaskId===m.taskId){
+    if(t.qId===m.taskId || t.qId===m.queueId || t.apiTaskId===m.taskId){
       t.progress = m.progress||0;
       t.status   = m.status||'processing';
-      // Simpan apiTaskId kalau belum ada
       if(!t.apiTaskId && m.taskId !== t.qId) t.apiTaskId = m.taskId;
     }
   });

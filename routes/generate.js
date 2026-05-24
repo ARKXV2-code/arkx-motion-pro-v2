@@ -125,9 +125,8 @@ router.get('/task/:taskId', async (req, res) => {
 
 // ── Background: tunggu selesai lalu broadcast + update history ─
 function _waitAndFinish(taskId, epPoll, modelId, params, queueId) {
-  mag.waitDone(taskId, epPoll).then(async final => {
+  mag.waitDone(taskId, epPoll, queueId).then(async final => {
     await history.update(taskId, { status:'done', videoUrl: final.videoUrl });
-    // Broadcast dengan KEDUA ID agar frontend bisa match
     _ws({ type:'completed', taskId, queueId, videoUrl: final.videoUrl });
     log.success(`🎬 Video ready: ${taskId.slice(0,8)}`);
   }).catch(async err => {

@@ -137,19 +137,21 @@ async function motionControl({ modelId, imageData, videoData, prompt, duration, 
 
   // Magnific motion control butuh URL publik, bukan base64
   if (!imageData) throw new Error('image_url wajib untuk motion control');
-  if (!videoData) throw new Error('video_url wajib untuk motion control');
 
-  // Pastikan keduanya URL (bukan base64)
-  if (imageData.startsWith('data:')) throw new Error('Image harus URL publik untuk motion control (upload ke tmpfiles dulu)');
-  if (videoData.startsWith('data:')) throw new Error('Video harus URL publik untuk motion control (upload ke tmpfiles dulu)');
+  // Pastikan image URL (bukan base64)
+  if (imageData.startsWith('data:')) throw new Error('Image harus URL publik untuk motion control');
 
   const body = {
-    image_url:            imageData,
-    video_url:            videoData,
-    prompt:               prompt || '',
-    cfg_scale:            parseFloat(strength) || 0.5,
+    image_url:             imageData,
+    prompt:                prompt || '',
+    cfg_scale:             parseFloat(strength) || 0.5,
     character_orientation: 'video',
   };
+
+  // Video referensi opsional
+  if (videoData && !videoData.startsWith('data:')) {
+    body.video_url = videoData;
+  }
 
   const res = await call(`/v1/ai/${m.ep_motion}`, 'POST', body);
   return { taskId: _taskId(res), ep_poll: m.ep_poll };
@@ -157,22 +159,21 @@ async function motionControl({ modelId, imageData, videoData, prompt, duration, 
 
 // ── Poll task status ──────────────────────────────────────────
 async function pollTask(taskId, epPoll) {
-  // Magnific poll endpoint: GET /v1/ai/{ep}/{taskId}
-  // ep_poll sudah disimpan saat submit task
-  const ep = epPoll || 'image-to-video/kling-v2-6-std';
+  const ep = epPoll || 'image-to-video/kling-v2-6';
   log.info(`🔍 Poll: /v1/ai/${ep}/${taskId}`);
   const res = await call(`/v1/ai/${ep}/${taskId}`, 'GET');
   return _parseStatus(taskId, res);
 }
 
 // ── Wait for completion ───────────────────────────────────────
-async function waitDone(taskId, epPoll, onProgress) {
+async function waitDone(taskId, epPoll, queueId, onProgress) {
   const MAX = 120;
   for (let i = 0; i < MAX; i++) {
     await sleep(5000);
     const s = await pollTask(taskId, epPoll);
     if (onProgress) onProgress(s);
-    _broadcast({ type: 'progress', taskId, ...s });
+    // Broadcast dengan queueId agar frontend bisa match
+    _broadcast({ type: 'progress', taskId, queueId, ...s });
     log.info(`📊 ${taskId.slice(0,8)}: ${s.status} ${Math.round((s.progress||0)*100)}%`);
     if (['COMPLETED','completed','succeed','success','DONE'].includes(s.status)) return s;
     if (['FAILED','failed','error','ERROR','CANCELLED'].includes(s.status)) throw new Error(s.error || 'Task failed');
