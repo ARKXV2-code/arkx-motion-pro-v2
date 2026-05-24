@@ -126,6 +126,7 @@ async function enterApp() {
   wsConnect();
   setInterval(pollQueue, 4000);
   setInterval(pollStats, 10000);
+  setInterval(pollActiveTasks, 6000); // poll active tasks progress
   navTo('generate');
   pollStats();
 }
@@ -533,23 +534,67 @@ async function hasKeys() {
 
 // ── TASK MANAGEMENT ───────────────────────────────────────────
 function addTask(qId,model,prompt,type,containerId) {
-  S.tasks.set(qId,{qId,model,prompt,type,status:'processing',progress:0,videoUrl:null});
+  S.tasks.set(qId,{qId,model,prompt,type,status:'processing',progress:0,videoUrl:null,apiTaskId:null});
   renderTaskList(containerId);
 }
+
 function onProgress(m) {
-  S.tasks.forEach(t=>{ if(t.qId===m.taskId){t.progress=m.progress||0;t.status=m.status||'processing';} });
+  // Match by apiTaskId atau qId
+  S.tasks.forEach(t=>{
+    if(t.qId===m.taskId || t.apiTaskId===m.taskId){
+      t.progress = m.progress||0;
+      t.status   = m.status||'processing';
+      // Simpan apiTaskId kalau belum ada
+      if(!t.apiTaskId && m.taskId !== t.qId) t.apiTaskId = m.taskId;
+    }
+  });
   renderTaskList('genTasks'); renderTaskList('motionTasks');
 }
+
 function onCompleted(m) {
-  S.tasks.forEach(t=>{ if(t.qId===m.taskId){t.status='done';t.progress=1;t.videoUrl=m.videoUrl;} });
+  S.tasks.forEach(t=>{
+    if(t.qId===m.taskId || t.qId===m.queueId || t.apiTaskId===m.taskId){
+      t.status='done'; t.progress=1; t.videoUrl=m.videoUrl;
+    }
+  });
   renderTaskList('genTasks'); renderTaskList('motionTasks');
   if(m.videoUrl) toast('🎬 Video siap!','success');
   loadHistoryData();
 }
+
 function onFailed(m) {
-  S.tasks.forEach(t=>{ if(t.qId===m.taskId){t.status='failed';t.error=m.error;} });
+  S.tasks.forEach(t=>{
+    if(t.qId===m.taskId || t.qId===m.queueId || t.apiTaskId===m.taskId){
+      t.status='failed'; t.error=m.error;
+    }
+  });
   renderTaskList('genTasks'); renderTaskList('motionTasks');
   toast('❌ '+(m.error||'Generate gagal'),'error');
+}
+
+// Poll queue untuk update progress dari server
+async function pollActiveTasks() {
+  if(S.tasks.size === 0) return;
+  try {
+    const r = await apiAuth('/api/queue');
+    // Update dari recent completed
+    const all = [...(r.active||[]), ...(r.queued||[]), ...(r.completed||[])];
+    all.forEach(item => {
+      S.tasks.forEach(t => {
+        if(t.qId === item.id) {
+          if(item.status === 'done' && item.result?.taskId) {
+            t.apiTaskId = item.result.taskId;
+          }
+          if(item.status === 'failed') {
+            t.status = 'failed';
+            t.error  = item.error;
+          }
+        }
+      });
+    });
+    renderTaskList('genTasks');
+    renderTaskList('motionTasks');
+  } catch {}
 }
 function renderTaskList(cId) {
   const el=$(cId); if(!el) return;

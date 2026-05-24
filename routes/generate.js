@@ -31,7 +31,7 @@ router.post('/t2v', async (req, res) => {
     const { id: qId, promise } = queue.add(async () => {
       const { taskId, ep_poll } = await mag.textToVideo({ modelId, prompt, negPrompt, duration, ratio, cfg });
       await history.save({ type:'t2v', model:modelId, prompt, taskId, ep_poll, status:'processing', params:{ duration, ratio } });
-      _waitAndFinish(taskId, ep_poll, modelId, { duration, ratio });
+      _waitAndFinish(taskId, ep_poll, modelId, { duration, ratio }, qId);
       return { taskId };
     }, { type:'t2v', model:modelId, prompt: prompt.slice(0,50) });
 
@@ -60,7 +60,7 @@ router.post('/i2v', upload.single('image'), async (req, res) => {
     const { id: qId, promise } = queue.add(async () => {
       const { taskId, ep_poll } = await mag.imageToVideo({ modelId, imageData, prompt, negPrompt, duration, ratio, cfg });
       await history.save({ type:'i2v', model:modelId, prompt, taskId, ep_poll, status:'processing', params:{ duration, ratio } });
-      _waitAndFinish(taskId, ep_poll, modelId, { duration, ratio });
+      _waitAndFinish(taskId, ep_poll, modelId, { duration, ratio }, qId);
       return { taskId };
     }, { type:'i2v', model:modelId });
 
@@ -107,7 +107,7 @@ router.post('/motion', upload.fields([
     const { id: qId, promise } = queue.add(async () => {
       const { taskId, ep_poll } = await mag.motionControl({ modelId, imageData, videoData, prompt, duration, ratio, strength });
       await history.save({ type:'motion', model:modelId, prompt, taskId, ep_poll, status:'processing', params:{ duration, ratio } });
-      _waitAndFinish(taskId, ep_poll, modelId, { duration, ratio });
+      _waitAndFinish(taskId, ep_poll, modelId, { duration, ratio }, qId);
       return { taskId };
     }, { type:'motion', model:modelId });
 
@@ -124,14 +124,15 @@ router.get('/task/:taskId', async (req, res) => {
 });
 
 // ── Background: tunggu selesai lalu broadcast + update history ─
-function _waitAndFinish(taskId, epPoll, modelId, params) {
+function _waitAndFinish(taskId, epPoll, modelId, params, queueId) {
   mag.waitDone(taskId, epPoll).then(async final => {
     await history.update(taskId, { status:'done', videoUrl: final.videoUrl });
-    _ws({ type:'completed', taskId, videoUrl: final.videoUrl });
+    // Broadcast dengan KEDUA ID agar frontend bisa match
+    _ws({ type:'completed', taskId, queueId, videoUrl: final.videoUrl });
     log.success(`🎬 Video ready: ${taskId.slice(0,8)}`);
   }).catch(async err => {
     await history.update(taskId, { status:'failed', error: err.message });
-    _ws({ type:'failed', taskId, error: err.message });
+    _ws({ type:'failed', taskId, queueId, error: err.message });
     log.error(`Video failed: ${err.message}`);
   });
 }
