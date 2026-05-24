@@ -5,7 +5,7 @@
 // ── State ─────────────────────────────────────────────────────
 const S = {
   user: null, token: null,
-  mode: 't2v', dur: 5, model: 'kling-2.6-std',
+  mode: 't2v', dur: 5, ratio: '16:9', model: 'kling-2.6-pro',
   imgFile: null,
   batchOn: false, batchCount: 2, batchFiles: {},
   mDur: 5, mModel: 'kling-motion-2.6-std',
@@ -225,10 +225,37 @@ function modelCards(list, selected, fn) {
 }
 
 // ── GENERATE PAGE ─────────────────────────────────────────────
+// Helper: durasi buttons sesuai model
+function _durButtons(model) {
+  const max = model?.maxDur || 10;
+  const durs = max >= 15 ? [5,10,15] : [5,10];
+  return durs.map(v => {
+    const disabled = v > max;
+    return `<button class="dur-btn ${S.dur===v&&!disabled?'active':''}" 
+      onclick="setDur(${v})" ${disabled?'disabled':''} 
+      style="${disabled?'opacity:.3;cursor:not-allowed':''}">${v}s</button>`;
+  }).join('');
+}
+
+// Helper: rasio options sesuai model
+function _ratioOptions(model) {
+  if (model?.provider === 'kling26') {
+    // Kling 2.6 Pro hanya support 3 rasio
+    return [
+      ['16:9','16:9 Landscape (widescreen)'],
+      ['9:16','9:16 Portrait (story)'],
+      ['1:1', '1:1 Square'],
+    ].map(([v,l]) => `<option value="${v}" ${S.ratio===v?'selected':''}>${l}</option>`).join('');
+  }
+  return ['16:9','9:16','1:1','4:3','3:4','21:9']
+    .map(r => `<option value="${r}" ${S.ratio===r?'selected':''}>${r}</option>`).join('');
+}
+
 function renderGenerate(el) {
   const t2vModels = S.models.filter(m => !m.motion && m.t2v);
   const i2vModels = S.models.filter(m => !m.motion && m.i2v);
   const list = S.mode==='t2v' ? t2vModels : i2vModels;
+  const selectedModel = S.models.find(m => m.id === S.model);
 
   el.innerHTML = `
   <div class="mode-toggle">
@@ -273,13 +300,13 @@ function renderGenerate(el) {
         <div class="inp-group">
           <label class="inp-label">⏱️ Durasi</label>
           <div class="dur-row" id="durRow">
-            ${[5,10,15].map(v=>`<button class="dur-btn ${S.dur===v?'active':''}" onclick="setDur(${v})">${v}s</button>`).join('')}
+            ${_durButtons(selectedModel)}
           </div>
         </div>
         <div class="inp-group">
           <label class="inp-label">📐 Rasio</label>
           <select id="ratio" class="sel">
-            ${['16:9','9:16','1:1','4:3','3:4','21:9'].map(r=>`<option value="${r}">${r}</option>`).join('')}
+            ${_ratioOptions(selectedModel)}
           </select>
         </div>
         <div class="inp-group">
@@ -563,10 +590,14 @@ function onCompleted(m) {
 function onFailed(m) {
   S.tasks.forEach(t=>{
     if(t.qId===m.taskId || t.qId===m.queueId || t.apiTaskId===m.taskId){
-      t.status='failed'; t.error=m.error;
+      // Jangan override kalau sudah ada video
+      if (!t.videoUrl) {
+        t.status='failed'; t.error=m.error;
+      }
     }
   });
   renderTaskList('genTasks'); renderTaskList('motionTasks');
+  if (!S.tasks.size || [...S.tasks.values()].every(t => t.videoUrl)) return;
   toast('❌ '+(m.error||'Generate gagal'),'error');
 }
 
@@ -600,12 +631,14 @@ function renderTaskList(cId) {
   if(!tasks.length){el.innerHTML='';return;}
   el.innerHTML=tasks.map(t=>{
     const pct=Math.round((t.progress||0)*100);
-    const badge=t.status==='processing'?`⏳ ${pct}%`:t.status==='done'?'✅ Done':'❌ Failed';
-    return `<div class="task-card ${t.status}">
-      <div class="task-hdr"><div class="task-model">${t.model}</div><div class="task-badge ${t.status}">${badge}</div></div>
+    // Kalau ada videoUrl, paksa status done
+    const status = t.videoUrl ? 'done' : t.status;
+    const badge = status==='processing'?`⏳ ${pct}%` : status==='done'?'✅ Done':'❌ Failed';
+    return `<div class="task-card ${status}">
+      <div class="task-hdr"><div class="task-model">${t.model}</div><div class="task-badge ${status}">${badge}</div></div>
       <div class="task-prompt">${t.prompt}</div>
-      <div class="task-prog-wrap"><div class="task-prog"><div class="task-prog-fill" style="width:${pct}%"></div></div><div class="task-pct">${pct}%</div></div>
-      ${t.error?`<div class="task-error">❌ ${t.error}</div>`:''}
+      <div class="task-prog-wrap"><div class="task-prog"><div class="task-prog-fill" style="width:${status==='done'?100:pct}%"></div></div><div class="task-pct">${status==='done'?100:pct}%</div></div>
+      ${t.error && status!=='done'?`<div class="task-error">❌ ${t.error}</div>`:''}
       ${t.videoUrl?`
         <video class="task-vid" src="${t.videoUrl}" preload="metadata" playsinline onclick="openVideo('${t.videoUrl}')"></video>
         <div class="task-actions">
