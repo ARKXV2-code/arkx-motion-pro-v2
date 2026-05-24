@@ -1,18 +1,16 @@
 /**
- * Magnific API Caller
- * Direct call ke api.magnific.com dari Railway server
- * Railway IP = bersih, tidak diblokir Magnific
+ * Magnific API Caller — Direct dari Railway server
+ * Railway IP bersih, tidak diblokir Magnific
  */
-const axios  = require('axios');
-const keys   = require('./keyStore');
-const log    = require('./logger');
+const axios = require('axios');
+const keys  = require('./keyStore');
+const log   = require('./logger');
 
 const MAGNIFIC_BASE = 'https://api.magnific.com';
 const MAX_RETRY     = 5;
 
 const UA_POOL = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -37,8 +35,6 @@ function buildHeaders(apiKey, extra = {}) {
     'sec-ch-ua':          '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
     'sec-ch-ua-mobile':   '?0',
     'sec-ch-ua-platform': '"Windows"',
-    'Cache-Control':      'no-cache',
-    'Pragma':             'no-cache',
     ...extra,
   };
 }
@@ -56,58 +52,83 @@ async function call(endpoint, method = 'GET', body = null, extraHeaders = {}, at
   try {
     const res = await axios({
       method, url, headers,
-      data:    body || undefined,
-      timeout: 120_000,
+      data:         body || undefined,
+      timeout:      120_000,
       maxRedirects: 5,
-      validateStatus: s => s < 500, // jangan throw untuk 4xx, handle manual
+      validateStatus: () => true, // handle semua status manual
     });
 
-    const ms = Date.now() - t0;
+    const ms  = Date.now() - t0;
+    const msg = res.data?.message || res.data?.error || `HTTP ${res.status}`;
 
-    // Handle 4xx manual
-    if (res.status >= 400) {
-      const msg = res.data?.message || res.data?.error || `HTTP ${res.status}`;
-      log.error(`❌ ${res.status} — ${msg}`);
-      keys.record(keyObj.id, false, ms, `${res.status}: ${msg}`);
-
-      if ([401, 403].includes(res.status)) {
-        keys.markDead(keyObj.id, `HTTP ${res.status}: ${msg}`);
-        if (attempt < MAX_RETRY) {
-          log.retry(`🔄 Key mati (${res.status}), ganti key attempt ${attempt+1}/${MAX_RETRY}`);
-          await sleep(500);
-          return call(endpoint, method, body, extraHeaders, attempt + 1);
-        }
-      }
-
-      if (res.status === 429 && attempt < MAX_RETRY) {
-        const wait = (attempt + 1) * 5000;
-        log.warn(`⏳ Rate limit, tunggu ${wait}ms…`);
-        await sleep(wait);
-        return call(endpoint, method, body, extraHeaders, attempt + 1);
-      }
-
-      throw new Error(msg);
+    // ── 2xx SUCCESS ──────────────────────────────────────────
+    if (res.status >= 200 && res.status < 300) {
+      keys.record(keyObj.id, true, ms, null);
+      log.success(`✅ ${res.status} (${ms}ms)`);
+      return res.data;
     }
 
-    keys.record(keyObj.id, true, ms, null);
-    log.success(`✅ ${res.status} (${ms}ms)`);
-    return res.data;
+    // ── 401 / 403 — key mati ─────────────────────────────────
+    if ([401, 403].includes(res.status)) {
+      log.error(`❌ ${res.status} — ${msg}`);
+      keys.record(keyObj.id, false, ms, `${res.status}: ${msg}`);
+      keys.markDead(keyObj.id, `HTTP ${res.status}: ${msg}`);
+      if (attempt < MAX_RETRY) {
+        log.retry(`🔄 Key mati, ganti key (attempt ${attempt+1}/${MAX_RETRY})`);
+        await sleep(500);
+        return call(endpoint, method, body, extraHeaders, attempt + 1);
+      }
+      throw new Error(`Semua key mati (${res.status}). Tambah key baru.`);
+    }
+
+    // ── 429 — quota habis, mark dead & coba key lain ─────────
+    if (res.status === 429) {
+      log.warn(`⛔ Key quota habis (429) — ${msg}`);
+      keys.record(keyObj.id, false, ms, `429: ${msg}`);
+      keys.markDead(keyObj.id, `429 daily limit`);
+      if (attempt < MAX_RETRY) {
+        log.retry(`🔄 Coba key lain (attempt ${attempt+1}/${MAX_RETRY})`);
+        await sleep(1000);
+        return call(endpoint, method, body, extraHeaders, attempt + 1);
+      }
+      throw new Error('Semua key sudah habis quota harian. Tambah key baru.');
+    }
+
+    // ── 404 — endpoint tidak ditemukan ───────────────────────
+    if (res.status === 404) {
+      log.error(`❌ 404 — ${msg} [${endpoint}]`);
+      keys.record(keyObj.id, false, ms, `404: ${msg}`);
+      throw new Error(`404: ${msg}`);
+    }
+
+    // ── 5xx — server error, retry ────────────────────────────
+    if (res.status >= 500) {
+      log.error(`❌ ${res.status} — ${msg}`);
+      keys.record(keyObj.id, false, ms, `${res.status}: ${msg}`);
+      if (attempt < 3) {
+        await sleep(2000);
+        return call(endpoint, method, body, extraHeaders, attempt + 1);
+      }
+      throw new Error(`Server error ${res.status}: ${msg}`);
+    }
+
+    // ── Other 4xx ────────────────────────────────────────────
+    log.error(`❌ ${res.status} — ${msg}`);
+    keys.record(keyObj.id, false, ms, `${res.status}: ${msg}`);
+    throw new Error(msg);
 
   } catch (err) {
-    // Network/timeout error
-    if (!err.response) {
+    // Hanya handle network/timeout error (bukan HTTP error yang sudah dihandle di atas)
+    if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT' || (!err.response && !err.message.includes('HTTP'))) {
       const ms = Date.now() - t0;
-      log.error(`❌ Network error: ${err.message}`);
+      log.error(`❌ Network/timeout: ${err.message}`);
       keys.record(keyObj.id, false, ms, err.message);
-
       if (attempt < 3) {
         log.warn(`🔄 Network retry ${attempt+1}/3…`);
         await sleep(3000 * (attempt + 1));
         return call(endpoint, method, body, extraHeaders, attempt + 1);
       }
-      throw new Error(`Network error: ${err.message}. Pastikan server bisa akses api.magnific.com`);
     }
-
     throw err;
   }
 }
@@ -119,25 +140,39 @@ async function callForm(endpoint, formData, attempt = 0) {
   const url     = `${MAGNIFIC_BASE}${endpoint}`;
   const t0      = Date.now();
   const headers = buildHeaders(keyObj.key, formData.getHeaders());
-  // Remove Content-Type dari buildHeaders karena form-data set sendiri
-  delete headers['Content-Type'];
+  delete headers['Content-Type']; // form-data set sendiri
 
   try {
     const res = await axios.post(url, formData, {
-      headers,
-      timeout: 120_000,
+      headers, timeout: 120_000,
       maxContentLength: 100 * 1024 * 1024,
       maxBodyLength:    100 * 1024 * 1024,
+      validateStatus:   () => true,
     });
-    keys.record(keyObj.id, true, Date.now() - t0, null);
-    return res.data;
+
+    const ms  = Date.now() - t0;
+    const msg = res.data?.message || res.data?.error || `HTTP ${res.status}`;
+
+    if (res.status >= 200 && res.status < 300) {
+      keys.record(keyObj.id, true, ms, null);
+      return res.data;
+    }
+
+    keys.record(keyObj.id, false, ms, `${res.status}: ${msg}`);
+    if ([401, 403].includes(res.status)) keys.markDead(keyObj.id, `HTTP ${res.status}`);
+    if (res.status === 429) keys.markDead(keyObj.id, '429 daily limit');
+    if (attempt < 3 && res.status !== 429) {
+      await sleep(2000);
+      return callForm(endpoint, formData, attempt + 1);
+    }
+    throw new Error(msg || `Upload error ${res.status}`);
+
   } catch (err) {
-    const status = err.response?.status;
-    const msg    = err.response?.data?.message || err.message;
-    keys.record(keyObj.id, false, Date.now() - t0, `${status}: ${msg}`);
-    if ([401, 403].includes(status)) keys.markDead(keyObj.id, `HTTP ${status}`);
-    if (attempt < 3) { await sleep(2000); return callForm(endpoint, formData, attempt + 1); }
-    throw new Error(msg || `Upload error ${status}`);
+    if (!err.response && attempt < 3) {
+      await sleep(2000);
+      return callForm(endpoint, formData, attempt + 1);
+    }
+    throw err;
   }
 }
 

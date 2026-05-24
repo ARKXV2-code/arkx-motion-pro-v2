@@ -157,7 +157,10 @@ async function motionControl({ modelId, imageData, videoData, prompt, duration, 
 
 // ── Poll task status ──────────────────────────────────────────
 async function pollTask(taskId, epPoll) {
-  const ep = epPoll || 'video/kling-v2-6-motion-control-std';
+  // Magnific poll endpoint: GET /v1/ai/{ep}/{taskId}
+  // ep_poll sudah disimpan saat submit task
+  const ep = epPoll || 'image-to-video/kling-v2-6-std';
+  log.info(`🔍 Poll: /v1/ai/${ep}/${taskId}`);
   const res = await call(`/v1/ai/${ep}/${taskId}`, 'GET');
   return _parseStatus(taskId, res);
 }
