@@ -260,15 +260,6 @@ function _ratioOptions(model) {
   const allRatios = ['16:9','9:16','1:1','4:3','3:4','21:9'];
   return allRatios.map(r => `<option value="${r}" ${current===r?'selected':''}>${r}</option>`).join('');
 }
-    return [
-      ['16:9','16:9 Landscape (widescreen)'],
-      ['9:16','9:16 Portrait (story)'],
-      ['1:1', '1:1 Square'],
-    ].map(([v,l]) => `<option value="${v}" ${S.ratio===v?'selected':''}>${l}</option>`).join('');
-  }
-  return ['16:9','9:16','1:1','4:3','3:4','21:9']
-    .map(r => `<option value="${r}" ${S.ratio===r?'selected':''}>${r}</option>`).join('');
-}
 
 function renderGenerate(el) {
   const t2vModels = S.models.filter(m => !m.motion && m.t2v);
