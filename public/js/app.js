@@ -208,6 +208,13 @@ async function loadModels() {
   try {
     const r = await api('/api/generate/models');
     S.models = r.models || [];
+    // Set default model ke yang pertama tersedia
+    if (S.models.length && !S.models.find(m => m.id === S.model)) {
+      const firstT2V = S.models.find(m => m.t2v && !m.motion);
+      const firstI2V = S.models.find(m => m.i2v && !m.motion);
+      S.model  = firstT2V?.id || firstI2V?.id || S.models[0]?.id;
+      S.mModel = S.models.find(m => m.motion)?.id || S.mModel;
+    }
   } catch(e) { addLog('error','Load models: '+e.message); }
 }
 
@@ -228,19 +235,31 @@ function modelCards(list, selected, fn) {
 // Helper: durasi buttons sesuai model
 function _durButtons(model) {
   const max = model?.maxDur || 10;
-  const durs = max >= 15 ? [5,10,15] : [5,10];
-  return durs.map(v => {
-    const disabled = v > max;
-    return `<button class="dur-btn ${S.dur===v&&!disabled?'active':''}" 
-      onclick="setDur(${v})" ${disabled?'disabled':''} 
-      style="${disabled?'opacity:.3;cursor:not-allowed':''}">${v}s</button>`;
-  }).join('');
+  // Pastikan S.dur tidak melebihi max model
+  if (S.dur > max) S.dur = max;
+  // Kling 3 support 3-15s, model lain 5-10s
+  const durs = max >= 15 ? [5, 10, 15] : [5, 10];
+  return durs.map(v => `<button class="dur-btn ${S.dur===v?'active':''}" onclick="setDur(${v})">${v}s</button>`).join('');
 }
 
 // Helper: rasio options sesuai model
 function _ratioOptions(model) {
+  const current = S.ratio || '16:9';
   if (model?.provider === 'kling26') {
-    // Kling 2.6 Pro hanya support 3 rasio
+    // Kling 2.6 Pro hanya support 3 rasio dengan nama berbeda
+    const opts = [
+      ['16:9','16:9 Landscape'],
+      ['9:16','9:16 Portrait'],
+      ['1:1', '1:1 Square'],
+    ];
+    // Reset ke 16:9 kalau rasio tidak support
+    if (!opts.find(([v]) => v === current)) S.ratio = '16:9';
+    return opts.map(([v,l]) => `<option value="${v}" ${S.ratio===v?'selected':''}>${l}</option>`).join('');
+  }
+  // Kling 3, WAN, Seedance, Kling 2.1/2.5 — semua support rasio standar
+  const allRatios = ['16:9','9:16','1:1','4:3','3:4','21:9'];
+  return allRatios.map(r => `<option value="${r}" ${current===r?'selected':''}>${r}</option>`).join('');
+}
     return [
       ['16:9','16:9 Landscape (widescreen)'],
       ['9:16','9:16 Portrait (story)'],
@@ -305,7 +324,7 @@ function renderGenerate(el) {
         </div>
         <div class="inp-group">
           <label class="inp-label">📐 Rasio</label>
-          <select id="ratio" class="sel">
+          <select id="ratio" class="sel" onchange="S.ratio=this.value">
             ${_ratioOptions(selectedModel)}
           </select>
         </div>
@@ -353,8 +372,14 @@ function renderGenerate(el) {
   renderTaskList('genTasks');
 }
 
-function setMode(m) { S.mode=m; renderPage('generate'); }
-function pickModel(id) { S.model=id; renderPage('generate'); }
+function setMode(m) { S.mode=m; S.imgFile=null; renderPage('generate'); }
+function pickModel(id) {
+  S.model=id;
+  // Reset dur ke max model kalau perlu
+  const m = S.models.find(x => x.id === id);
+  if (m && S.dur > m.maxDur) S.dur = m.maxDur;
+  renderPage('generate');
+}
 function setDur(v) { S.dur=v; renderPage('generate'); }
 
 function onImgUpload(e) {
@@ -468,14 +493,17 @@ async function doGenerate() {
     if (S.mode==='t2v') {
       res = await apiAuth('/api/generate/t2v','POST',{
         modelId:S.model, prompt, negPrompt:$('negPrompt')?.value||'',
-        duration:S.dur, ratio:$('ratio')?.value||'16:9', cfg:parseFloat($('cfg')?.value||0.5)
+        duration:S.dur,
+        ratio: $('ratio')?.value || S.ratio || '16:9',
+        cfg:parseFloat($('cfg')?.value||0.5)
       });
     } else {
       if (!S.imgFile) return toast('Upload gambar dulu','error');
       const fd=new FormData();
       fd.append('image',S.imgFile); fd.append('modelId',S.model);
       fd.append('prompt',prompt); fd.append('negPrompt',$('negPrompt')?.value||'');
-      fd.append('duration',S.dur); fd.append('ratio',$('ratio')?.value||'16:9');
+      fd.append('duration',S.dur);
+      fd.append('ratio',$('ratio')?.value || S.ratio || '16:9');
       fd.append('cfg',$('cfg')?.value||0.5);
       res = await apiFormAuth('/api/generate/i2v',fd);
     }

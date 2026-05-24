@@ -36,6 +36,20 @@ function clampDur(dur, max = 10) {
 
 // ── Model registry ───────────────────────────────────────────
 const MODELS = {
+  // ── Kling 3 Pro — T2V + I2V, max 15s ────────────────────
+  'kling-3-pro': {
+    provider: 'kling3', mode: 'pro', maxDur: 15,
+    t2v: true, i2v: true, motion: false,
+    ep_submit: 'video/kling-v3-pro',
+    ep_poll:   'video/kling-v3',   // GET /v1/ai/video/kling-v3/{task-id}
+  },
+  // ── Kling 3 Std — T2V + I2V, max 15s ────────────────────
+  'kling-3-std': {
+    provider: 'kling3', mode: 'std', maxDur: 15,
+    t2v: true, i2v: true, motion: false,
+    ep_submit: 'video/kling-v3-std',
+    ep_poll:   'video/kling-v3',
+  },
   // ── Kling 2.6 Pro — T2V + I2V (aspect_ratio format berbeda) ─
   'kling-2.6-pro': {
     provider: 'kling26', mode: 'pro', maxDur: 10,
@@ -105,6 +119,8 @@ const MODELS = {
 };
 
 const LABELS = {
+  'kling-3-pro':          'Kling 3 Pro',
+  'kling-3-std':          'Kling 3 Standard',
   'kling-2.6-pro':        'Kling 2.6 Pro',
   'kling-2.5-pro':        'Kling 2.5 Pro',
   'kling-2.1-pro':        'Kling 2.1 Pro',
@@ -125,7 +141,17 @@ async function textToVideo({ modelId, prompt, negPrompt, duration, ratio, cfg })
   log.info(`🎬 T2V: ${modelId} | ${dur}s | ${ratio}`);
 
   let body;
-  if (m.provider === 'kling26') {
+  if (m.provider === 'kling3') {
+    // Kling 3: aspect_ratio format normal, durasi 3-15s
+    body = {
+      prompt,
+      negative_prompt: negPrompt || '',
+      duration:        dur,
+      aspect_ratio:    ratio || '16:9',
+      cfg_scale:       parseFloat(cfg) || 0.5,
+      generate_audio:  false,
+    };
+  } else if (m.provider === 'kling26') {
     // Kling 2.6 Pro: aspect_ratio format berbeda, tidak ada field image untuk T2V
     body = {
       prompt,
@@ -157,7 +183,19 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
   log.info(`🖼️ I2V: ${modelId} | ${dur}s | ${ratio}`);
 
   let body;
-  if (m.provider === 'kling26') {
+  if (m.provider === 'kling3') {
+    // Kling 3: pakai start_image_url, aspect_ratio format normal
+    if (imageData.startsWith('data:')) throw new Error('Kling 3 I2V membutuhkan URL publik. Gunakan ImgBB.');
+    body = {
+      start_image_url: imageData,
+      prompt:          prompt || '',
+      negative_prompt: negPrompt || '',
+      duration:        dur,
+      aspect_ratio:    ratio || '16:9',
+      cfg_scale:       parseFloat(cfg) || 0.5,
+      generate_audio:  false,
+    };
+  } else if (m.provider === 'kling26') {
     // Kling 2.6 Pro I2V: pakai Option 2 (dengan image)
     body = {
       image:           imageData,
