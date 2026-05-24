@@ -95,15 +95,6 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
   } catch (e) { res.status(400).json({ ok: false, error: e.message }); }
 });
 
-router.post('/users/:id/plan', requireAdmin, async (req, res) => {
-  try {
-    const { plan } = req.body;
-    if (!['free','pro','enterprise'].includes(plan)) return res.status(400).json({ ok:false, error:'Invalid plan' });
-    const user = await auth.setPlan(req.params.id, plan);
-    res.json({ ok: true, user });
-  } catch (e) { res.status(400).json({ ok: false, error: e.message }); }
-});
-
 module.exports = router;
 module.exports.requireAuth = requireAuth;
 module.exports.requireAdmin = requireAdmin;

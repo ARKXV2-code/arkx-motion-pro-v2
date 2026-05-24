@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#050508">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ARKX Motion Pro V2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -52,17 +53,17 @@
       <div class="auth-card-sub">Login ke akun kamu</div>
       <div class="auth-field">
         <label>Email</label>
-        <input type="email" id="loginEmail" class="auth-input" placeholder="email@kamu.com">
+        <input type="email" id="loginEmail" class="auth-input" placeholder="email@kamu.com" autocomplete="email">
       </div>
       <div class="auth-field">
         <label>Password</label>
         <div class="pass-wrap">
-          <input type="password" id="loginPass" class="auth-input" placeholder="••••••••">
-          <button class="pass-eye" onclick="togglePass('loginPass')">👁</button>
+          <input type="password" id="loginPass" class="auth-input" placeholder="••••••••" autocomplete="current-password">
+          <button class="pass-eye" onclick="togglePass('loginPass')" type="button">👁</button>
         </div>
       </div>
       <div class="auth-error hidden" id="loginError"></div>
-      <button class="auth-btn" id="loginBtn" onclick="doLogin()">
+      <button class="auth-btn" id="loginBtn" onclick="doLogin()" type="button">
         <span id="loginBtnTxt">Login</span>
       </button>
       <div class="auth-switch">
@@ -75,24 +76,24 @@
       <div class="auth-card-sub">Daftar dan tunggu persetujuan admin</div>
       <div class="auth-field">
         <label>Nama Lengkap</label>
-        <input type="text" id="regName" class="auth-input" placeholder="Nama kamu">
+        <input type="text" id="regName" class="auth-input" placeholder="Nama kamu" autocomplete="name">
       </div>
       <div class="auth-field">
         <label>Email</label>
-        <input type="email" id="regEmail" class="auth-input" placeholder="email@kamu.com">
+        <input type="email" id="regEmail" class="auth-input" placeholder="email@kamu.com" autocomplete="email">
       </div>
       <div class="auth-field">
         <label>Password</label>
         <div class="pass-wrap">
-          <input type="password" id="regPass" class="auth-input" placeholder="Min. 6 karakter">
-          <button class="pass-eye" onclick="togglePass('regPass')">👁</button>
+          <input type="password" id="regPass" class="auth-input" placeholder="Min. 6 karakter" autocomplete="new-password">
+          <button class="pass-eye" onclick="togglePass('regPass')" type="button">👁</button>
         </div>
       </div>
       <div class="auth-error hidden" id="regError"></div>
       <div class="auth-info">
         <span>ℹ️</span> Akun akan aktif setelah disetujui admin
       </div>
-      <button class="auth-btn" id="regBtn" onclick="doRegister()">
+      <button class="auth-btn" id="regBtn" onclick="doRegister()" type="button">
         <span id="regBtnTxt">Daftar</span>
       </button>
       <div class="auth-switch">
@@ -104,7 +105,7 @@
       <div class="pending-icon">⏳</div>
       <div class="auth-card-title">Menunggu Persetujuan</div>
       <div class="auth-card-sub">Admin akan segera mereview akun kamu.<br>Coba login lagi setelah disetujui.</div>
-      <button class="auth-btn" onclick="showLogin()">Kembali ke Login</button>
+      <button class="auth-btn" onclick="showLogin()" type="button">Kembali ke Login</button>
     </div>
   </div>
 </div>
@@ -159,16 +160,16 @@
         <div class="sb-uname" id="sbUname">User</div>
         <div class="sb-urole" id="sbUrole">user</div>
       </div>
-      <button class="sb-logout" onclick="doLogout()" title="Logout">⏻</button>
+      <button class="sb-logout" onclick="doLogout()" title="Logout" type="button">⏻</button>
     </div>
   </aside>
 
   <!-- Mobile Header -->
   <header class="mob-header">
-    <button class="mob-menu" onclick="toggleSidebar()">☰</button>
+    <button class="mob-menu" onclick="toggleSidebar()" type="button" aria-label="Menu">☰</button>
     <div class="mob-brand">⚡ ARKX</div>
     <div class="mob-right">
-      <div class="ws-indicator" id="wsIndicator"></div>
+      <div class="ws-indicator" id="wsIndicator" title="WebSocket"></div>
       <div class="key-count" id="keyCount">0 Keys</div>
     </div>
   </header>
@@ -210,6 +211,36 @@
     </div>
 
   </main>
+
+  <!-- Mobile Bottom Tab Bar -->
+  <nav class="bottom-tabs" id="bottomTabs">
+    <button class="btab active" data-page="generate" onclick="navTo('generate')" type="button">
+      <span class="btab-icon">🎬</span>
+      <span class="btab-label">Generate</span>
+    </button>
+    <button class="btab" data-page="motion" onclick="navTo('motion')" type="button">
+      <span class="btab-icon">🎮</span>
+      <span class="btab-label">Motion</span>
+    </button>
+    <button class="btab" data-page="queue" onclick="navTo('queue')" type="button">
+      <span class="btab-icon">📋</span>
+      <span class="btab-label">Queue</span>
+      <span class="btab-badge hidden" id="btabQBadge">0</span>
+    </button>
+    <button class="btab" data-page="history" onclick="navTo('history')" type="button">
+      <span class="btab-icon">📁</span>
+      <span class="btab-label">History</span>
+    </button>
+    <button class="btab" data-page="keys" onclick="navTo('keys')" type="button">
+      <span class="btab-icon">🔑</span>
+      <span class="btab-label">Keys</span>
+    </button>
+    <button class="btab" data-page="debug" onclick="navTo('debug')" type="button">
+      <span class="btab-icon">🐛</span>
+      <span class="btab-label">More</span>
+    </button>
+  </nav>
+
 </div>
 
 <!-- ═══ VIDEO MODAL ═══ -->
@@ -217,12 +248,12 @@
   <div class="vmodal" onclick="event.stopPropagation()">
     <div class="vmodal-hdr">
       <div class="vmodal-title">🎬 Video Ready</div>
-      <button class="vmodal-close" onclick="closeVideo()">✕</button>
+      <button class="vmodal-close" onclick="closeVideo()" type="button">✕</button>
     </div>
     <video id="resultVid" controls playsinline class="vmodal-vid"></video>
     <div class="vmodal-actions">
       <a id="dlBtn" class="btn-primary" download="arkx-video.mp4">⬇️ Download</a>
-      <button class="btn-ghost" onclick="closeVideo()">Tutup</button>
+      <button class="btn-ghost" onclick="closeVideo()" type="button">Tutup</button>
     </div>
   </div>
 </div>

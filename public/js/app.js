@@ -116,7 +116,7 @@ async function enterApp() {
   $('mainApp').classList.remove('hidden');
   // Set user info
   $('sbUname').textContent  = S.user.name;
-  $('sbUrole').textContent  = S.user.plan === 'pro' ? '⭐ Pro' : S.user.plan === 'enterprise' ? '👑 Enterprise' : S.user.role;
+  $('sbUrole').textContent  = S.user.role;
   $('sbAvatar').textContent = S.user.name[0].toUpperCase();
   // Show admin menu if admin
   if (S.user.role === 'admin') {
@@ -166,6 +166,8 @@ function navTo(page) {
   S.currentPage = page;
   // Update sidebar
   document.querySelectorAll('.sb-item').forEach(b => b.classList.toggle('active', b.dataset.page===page));
+  // Update bottom tabs
+  document.querySelectorAll('.btab').forEach(b => b.classList.toggle('active', b.dataset.page===page));
   // Update pages
   document.querySelectorAll('.page').forEach(p => {
     const active = p.id === `page-${page}`;
@@ -747,7 +749,10 @@ async function pollQueue() {
     </div>`).join('');
   } catch {}
 }
-function updateQBadge(n){const b=$('sbQBadge');if(!b)return;b.textContent=n;b.classList.toggle('hidden',n===0);}
+function updateQBadge(n){
+  const b=$('sbQBadge');if(b){b.textContent=n;b.classList.toggle('hidden',n===0);}
+  const bt=$('btabQBadge');if(bt){bt.textContent=n;bt.classList.toggle('hidden',n===0);}
+}
 
 // ── HISTORY PAGE ──────────────────────────────────────────────
 let _histItems = [];
@@ -887,12 +892,10 @@ async function loadAdminData() {
 
 function userCard(u, showApprove) {
   const initials = u.name ? u.name[0].toUpperCase() : 'U';
-  const planColor = u.plan==='pro'?'var(--p2)':u.plan==='enterprise'?'var(--yel)':'var(--t3)';
-  const planLabel = u.plan==='pro'?'⭐ Pro':u.plan==='enterprise'?'👑 Enterprise':'Free';
   return `<div class="user-item">
     <div class="user-avatar">${initials}</div>
     <div class="user-info">
-      <div class="user-name">${u.name} <span style="font-size:11px;color:${planColor};font-weight:700">${planLabel}</span></div>
+      <div class="user-name">${u.name}</div>
       <div class="user-email">${u.email} ${u.role==='admin'?'👑':''}</div>
     </div>
     <span class="user-status ${u.status}">${u.status}</span>
@@ -901,8 +904,6 @@ function userCard(u, showApprove) {
         <button class="btn-primary" style="padding:6px 12px;font-size:12px" onclick="approveUser('${u.id}')">✅ Approve</button>
         <button class="btn-danger" style="padding:6px 12px;font-size:12px" onclick="rejectUser('${u.id}')">❌ Reject</button>
       ` : u.role !== 'admin' ? `
-        ${u.plan!=='pro'?`<button class="btn-sm" onclick="setPlan('${u.id}','pro')" style="color:var(--p2)">⭐ Pro</button>`:''}
-        ${u.plan==='pro'?`<button class="btn-sm" onclick="setPlan('${u.id}','free')">↓ Free</button>`:''}
         ${u.status==='approved'?`<button class="btn-sm" onclick="banUser('${u.id}')">🚫 Ban</button>`:''}
         ${u.status==='banned'?`<button class="btn-sm" onclick="approveUser('${u.id}')">✅ Unban</button>`:''}
         <button class="btn-sm" style="color:var(--red)" onclick="deleteUser('${u.id}')">🗑</button>
@@ -915,7 +916,6 @@ async function approveUser(id){try{await apiAuth(`/api/auth/users/${id}/approve`
 async function rejectUser(id){try{await apiAuth(`/api/auth/users/${id}/reject`,'POST');toast('User ditolak','info');await loadAdminData();}catch(e){toast(e.message,'error');}}
 async function banUser(id){try{await apiAuth(`/api/auth/users/${id}/ban`,'POST');toast('User dibanned','warn');await loadAdminData();}catch(e){toast(e.message,'error');}}
 async function deleteUser(id){if(!confirm('Hapus user ini?'))return;try{await apiAuth(`/api/auth/users/${id}`,'DELETE');await loadAdminData();}catch(e){toast(e.message,'error');}}
-async function setPlan(id, plan){try{await apiAuth(`/api/auth/users/${id}/plan`,'POST',{plan});toast(`Plan diubah ke ${plan}`,'success');await loadAdminData();}catch(e){toast(e.message,'error');}}
 
 // ── SETTINGS PAGE ─────────────────────────────────────────────
 async function renderSettings(el) {
