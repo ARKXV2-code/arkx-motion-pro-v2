@@ -378,76 +378,75 @@ function onImgUpload(e) {
 function renderMotion(el) {
   const motionModels = S.models.filter(m => m.motion);
   el.innerHTML = `
-  <div class="grid2">
-    <div>
-      <div class="card">
-        <div class="card-title"><span>🤖</span> Motion Model</div>
-        <div class="model-grid">${modelCards(motionModels,S.mModel,'pickMModel')}</div>
-      </div>
-      <div class="card">
-        <div class="card-title"><span>🖼️</span> Image Reference <span style="color:var(--red)">*</span></div>
-        <div class="dropzone" id="mImgDrop" onclick="$('mImgFile').click()">
-          ${S.mImgFile
-            ? `<img class="dz-preview" src="${URL.createObjectURL(S.mImgFile)}">`
-            : `<div class="dz-icon">📸</div><div class="dz-title">Upload gambar referensi</div><div class="dz-sub">Wajib · JPG PNG WebP · max 50MB</div>`}
-        </div>
-        <input type="file" id="mImgFile" accept="image/*" class="hidden" onchange="onMImgUpload(event)">
-      </div>
-      <div class="card">
-        <div class="card-title"><span>🎥</span> Video Reference <span style="color:var(--red)">*</span></div>
-        <div class="dropzone" id="mVidDrop" onclick="$('mVidFile').click()">
-          ${S.mVidFile
-            ? `<video class="dz-vid-preview" src="${URL.createObjectURL(S.mVidFile)}" controls></video>`
-            : `<div class="dz-icon">🎬</div><div class="dz-title">Upload video referensi</div><div class="dz-sub">Wajib · MP4 WebM · max 50MB</div>`}
-        </div>
-        <input type="file" id="mVidFile" accept="video/*" class="hidden" onchange="onMVidUpload(event)">
+  <div class="card">
+    <div class="card-title"><span>🤖</span> Motion Model</div>
+    <div class="model-grid">${modelCards(motionModels,S.mModel,'pickMModel')}</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>🖼️</span> Image Reference <span style="color:var(--red)">*</span></div>
+    <div class="dropzone" id="mImgDrop" onclick="$('mImgFile').click()">
+      ${S.mImgFile
+        ? `<img class="dz-preview" src="${URL.createObjectURL(S.mImgFile)}">`
+        : `<div class="dz-icon">📸</div><div class="dz-title">Upload gambar referensi</div><div class="dz-sub">Wajib · JPG PNG WebP · max 50MB</div>`}
+    </div>
+    <input type="file" id="mImgFile" accept="image/*" class="hidden" onchange="onMImgUpload(event)">
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>🎥</span> Video Reference <span style="color:var(--red)">*</span></div>
+    <div class="dropzone" id="mVidDrop" onclick="$('mVidFile').click()">
+      ${S.mVidFile
+        ? `<video class="dz-vid-preview" src="${URL.createObjectURL(S.mVidFile)}" controls></video>`
+        : `<div class="dz-icon">🎬</div><div class="dz-title">Upload video referensi</div><div class="dz-sub">Wajib · MP4 WebM · max 50MB</div>`}
+    </div>
+    <input type="file" id="mVidFile" accept="video/*" class="hidden" onchange="onMVidUpload(event)">
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>✍️</span> Motion Prompt <span style="color:var(--t3);font-weight:400;text-transform:none">(opsional)</span></div>
+    <textarea id="mPrompt" class="ta" rows="3" placeholder="Deskripsikan gerakan…&#10;Contoh: slow zoom in, camera pan left"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>⚙️</span> Settings</div>
+    <div class="inp-group">
+      <label class="inp-label">⏱️ Durasi (max 30s)</label>
+      <div class="dur-row">
+        ${[5,10,15,20,30].map(v=>`<button class="dur-btn ${S.mDur===v?'active':''}" onclick="setMDur(${v})">${v}s</button>`).join('')}
       </div>
     </div>
-    <div>
-      <div class="card">
-        <div class="card-title"><span>✍️</span> Motion Prompt <span style="color:var(--t3);font-weight:400;text-transform:none">(opsional)</span></div>
-        <textarea id="mPrompt" class="ta" rows="3" placeholder="Deskripsikan gerakan…&#10;Contoh: slow zoom in, camera pan left"></textarea>
-      </div>
-      <div class="card">
-        <div class="card-title"><span>⚙️</span> Settings</div>
-        <div class="inp-group">
-          <label class="inp-label">⏱️ Durasi (max 30s)</label>
-          <div class="dur-row">
-            ${[5,10,15,20,30].map(v=>`<button class="dur-btn ${S.mDur===v?'active':''}" onclick="setMDur(${v})">${v}s</button>`).join('')}
-          </div>
-        </div>
-        <div class="inp-group">
-          <label class="inp-label">📐 Rasio</label>
-          <select id="mRatio" class="sel">
-            ${['16:9','9:16','1:1','4:3','3:4'].map(r=>`<option value="${r}">${r}</option>`).join('')}
-          </select>
-        </div>
-        <div class="inp-group">
-          <label class="inp-label">💪 Motion Strength: <span class="slider-val" id="mStrVal">0.5</span></label>
-          <input type="range" id="mStr" min="0" max="1" step="0.1" value="0.5" class="slider"
-            oninput="$('mStrVal').textContent=this.value">
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title"><span>📦</span> Batch Mode</div>
-        <div class="batch-toggle-row">
-          <span style="font-size:13px;color:var(--t2)">Generate ${S.mBatchCount} motion sekaligus</span>
-          <label class="toggle">
-            <input type="checkbox" id="mBatchToggle" ${S.mBatchOn?'checked':''} onchange="toggleMBatch(this.checked)">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div class="batch-panel ${S.mBatchOn?'':'hidden'}" id="mBatchPanel">
-          <div class="batch-info" style="margin-top:12px">Tiap motion bisa punya image+video berbeda</div>
-          <div class="batch-count-row">
-            <span>Jumlah:</span>
-            <div class="batch-nums">
-              ${[2,3,4,5].map(n=>`<button class="batch-n ${S.mBatchCount===n?'active':''}" onclick="setMBatchCount(${n})">${n}</button>`).join('')}
-            </div>
-          </div>
-          <div id="mBatchItems"></div>
+    <div class="inp-group">
+      <label class="inp-label">📐 Rasio</label>
+      <select id="mRatio" class="sel">
+        ${['16:9','9:16','1:1','4:3','3:4'].map(r=>`<option value="${r}">${r}</option>`).join('')}
+      </select>
+    </div>
+    <div class="inp-group">
+      <label class="inp-label">💪 Motion Strength: <span class="slider-val" id="mStrVal">0.5</span></label>
+      <input type="range" id="mStr" min="0" max="1" step="0.1" value="0.5" class="slider"
+        oninput="$('mStrVal').textContent=this.value">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>📦</span> Batch Mode</div>
+    <div class="batch-toggle-row">
+      <span style="font-size:13px;color:var(--t2)">Generate ${S.mBatchCount} motion sekaligus</span>
+      <label class="toggle">
+        <input type="checkbox" id="mBatchToggle" ${S.mBatchOn?'checked':''} onchange="toggleMBatch(this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="batch-panel ${S.mBatchOn?'':'hidden'}" id="mBatchPanel">
+      <div class="batch-info" style="margin-top:12px">Tiap motion bisa punya image+video berbeda</div>
+      <div class="batch-count-row">
+        <span>Jumlah:</span>
+        <div class="batch-nums">
+          ${[2,3,4,5].map(n=>`<button class="batch-n ${S.mBatchCount===n?'active':''}" onclick="setMBatchCount(${n})">${n}</button>`).join('')}
         </div>
       </div>
+      <div id="mBatchItems"></div>
     </div>
   </div>
   <button class="gen-btn motion" id="motionBtn" onclick="doMotion()">
@@ -771,8 +770,17 @@ async function loadHistoryData() {
     _histItems=r.items||[];
     const el=$('histList'); if(!el) return;
     if(!_histItems.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">📁</div><div class="empty-text">Belum ada history</div></div>';return;}
-    el.innerHTML=_histItems.map(h=>`<div class="hist-item">
-      <div class="hist-hdr"><div class="hist-model">${h.model}</div><div class="hist-type">${h.type}</div></div>
+    el.innerHTML=_histItems.map(h=>`
+    <div class="hist-item" style="overflow:hidden">
+      ${h.videoUrl ? `
+      <video class="hist-thumb-vid" src="${h.videoUrl}" preload="metadata" muted playsinline
+        onclick="openVideo('${h.videoUrl}')"
+        style="width:80px;height:52px;object-fit:cover;border-radius:8px;cursor:pointer;float:right;margin-left:12px;border:1px solid rgba(255,255,255,.1)">
+      </video>` : ''}
+      <div class="hist-hdr">
+        <div class="hist-model">${h.model}</div>
+        <div class="hist-type">${h.type}</div>
+      </div>
       <div class="hist-prompt">${h.prompt||'—'}</div>
       <div class="hist-meta">
         <span>${h.status==='done'?'✅':h.status==='failed'?'❌':'⏳'} ${h.status}</span>
@@ -782,7 +790,7 @@ async function loadHistoryData() {
       ${h.videoUrl?`<div class="hist-actions">
         <button class="btn-primary" onclick="openVideo('${h.videoUrl}')">▶️ Play</button>
         <a class="btn-ghost" href="${h.videoUrl}" target="_blank" download="arkx-video.mp4">⬇️ Download</a>
-      </div>`:''}
+      </div><div style="clear:both"></div>`:h.status==='processing'?`<div style="font-size:12px;color:var(--t3);margin-top:8px">⏳ Masih diproses…</div>`:'<div style="clear:both"></div>'}
     </div>`).join('');
   } catch {}
 }
@@ -915,77 +923,82 @@ async function deleteUser(id){if(!confirm('Hapus user ini?'))return;try{await ap
 async function renderSettings(el) {
   let cfg = {};
   try { cfg = await apiAuth('/api/settings'); } catch {}
+
+  const badge = (ok, okTxt, noTxt) =>
+    ok ? `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(0,200,100,.12);color:#00c864;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid rgba(0,200,100,.25)">✅ ${okTxt}</span>`
+       : `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,180,0,.1);color:#ffb400;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid rgba(255,180,0,.25)">⚠️ ${noTxt}</span>`;
+
   el.innerHTML = `
-  <div class="grid2">
-    <div>
-      <div class="card">
-        <div class="card-title"><span>☁️</span> Cloudflare Worker</div>
-        <div class="inp-group">
-          <label class="inp-label">Worker URL</label>
-          <input id="cfUrl" class="inp" value="${cfg.workerUrl||''}" placeholder="https://arkx-proxy.namakamu.workers.dev" type="url">
-        </div>
-        <div class="inp-group">
-          <label class="inp-label">Worker Secret</label>
-          <input id="cfSecret" class="inp" placeholder="Secret yang sama dengan di Worker" type="password">
-        </div>
-        <div class="${cfg.workerSet?'info-box':'warn-box'}" style="margin-bottom:12px">
-          ${cfg.workerSet ? '✅ Worker sudah dikonfigurasi' : '⚠️ Worker belum diset'}
-        </div>
-        <div class="btn-row">
-          <button class="btn-primary" onclick="saveWorker()">💾 Simpan</button>
-          <button class="btn-ghost" onclick="testWorker()">🔗 Test</button>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title"><span>🖼️</span> ImgBB API Key</div>
-        <div class="inp-group">
-          <label class="inp-label">API Key</label>
-          <input id="imgbbKey" class="inp" placeholder="Paste ImgBB API key..." type="password">
-        </div>
-        <div class="${cfg.imgbbSet?'info-box':'warn-box'}" style="margin-bottom:12px">
-          ${cfg.imgbbSet ? `✅ ImgBB aktif (${cfg.imgbbKey})` : '⚠️ ImgBB belum diset — upload image pakai tmpfiles'}
-        </div>
-        <div class="btn-row">
-          <button class="btn-primary" onclick="saveImgbb()">💾 Simpan Key</button>
-        </div>
-        <div class="info-box" style="margin-top:12px">
-          Daftar gratis di <a href="https://imgbb.com" target="_blank" style="color:var(--p)">imgbb.com</a> → Login → Nama profil → API
-        </div>
-      </div>
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between">
+      <span><span>☁️</span> Cloudflare Worker</span>
+      ${badge(cfg.workerSet, 'Configured', 'Not set')}
     </div>
-    <div>
-      <div class="card">
-        <div class="card-title"><span>🤖</span> Telegram Bot</div>
-        <div class="inp-group">
-          <label class="inp-label">Bot Token</label>
-          <input id="tgToken" class="inp" placeholder="Token dari @BotFather" type="password">
-        </div>
-        <div class="${cfg.telegramSet?'info-box':'warn-box'}" style="margin-bottom:12px">
-          ${cfg.telegramSet ? '✅ Telegram terhubung' : '⚠️ Telegram belum diset'}
-        </div>
-        <button class="btn-primary" onclick="saveTelegram()">Connect Bot</button>
-      </div>
-      <div class="card">
-        <div class="card-title"><span>🔐</span> Ganti Password</div>
-        <div class="inp-group">
-          <label class="inp-label">Password Lama</label>
-          <input id="oldPass" class="inp" type="password" placeholder="••••••••">
-        </div>
-        <div class="inp-group">
-          <label class="inp-label">Password Baru</label>
-          <input id="newPass" class="inp" type="password" placeholder="Min. 6 karakter">
-        </div>
-        <button class="btn-primary mt12" onclick="changePass()">🔐 Ganti Password</button>
-      </div>
-      <div class="card">
-        <div class="card-title"><span>ℹ️</span> Tentang</div>
-        <div style="font-size:14px">
-          <div style="font-weight:800;font-size:16px">ARKX Motion Pro V2</div>
-          <div style="color:var(--t3);margin-top:6px">AI Video Generation Platform</div>
-          <div style="color:var(--t3)">Cloudflare Worker Proxy</div>
-          <div style="margin-top:12px;display:inline-block;background:var(--p);color:#fff;font-size:11px;padding:4px 12px;border-radius:20px;font-weight:700">v2.0.0</div>
-        </div>
-      </div>
+    <div class="inp-group">
+      <label class="inp-label">Worker URL</label>
+      <input id="cfUrl" class="inp" value="${cfg.workerUrl||''}" placeholder="https://arkx-proxy.namakamu.workers.dev" type="url">
+    </div>
+    <div class="inp-group">
+      <label class="inp-label">Worker Secret</label>
+      <input id="cfSecret" class="inp" placeholder="Secret yang sama dengan di Worker" type="password">
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveWorker()">💾 Simpan</button>
+      <button class="btn-ghost" onclick="testWorker()">🔗 Test Worker</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between">
+      <span><span>🖼️</span> ImgBB API Key</span>
+      ${badge(cfg.imgbbSet, cfg.imgbbKey ? 'Aktif ('+cfg.imgbbKey+')' : 'Aktif', 'Not set')}
+    </div>
+    <div class="inp-group">
+      <label class="inp-label">API Key</label>
+      <input id="imgbbKey" class="inp" placeholder="Paste ImgBB API key..." type="password">
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveImgbb()">💾 Simpan Key</button>
+    </div>
+    <div class="info-box" style="margin-top:12px">
+      Daftar gratis di <a href="https://imgbb.com" target="_blank" style="color:var(--p)">imgbb.com</a> → Login → Nama profil → API
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between">
+      <span><span>🤖</span> Telegram Bot</span>
+      ${badge(cfg.telegramSet, 'Terhubung', 'Not set')}
+    </div>
+    <div class="inp-group">
+      <label class="inp-label">Bot Token</label>
+      <input id="tgToken" class="inp" placeholder="Token dari @BotFather" type="password">
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveTelegram()">🔗 Connect Bot</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>🔐</span> Ganti Password</div>
+    <div class="inp-group">
+      <label class="inp-label">Password Lama</label>
+      <input id="oldPass" class="inp" type="password" placeholder="••••••••">
+    </div>
+    <div class="inp-group">
+      <label class="inp-label">Password Baru</label>
+      <input id="newPass" class="inp" type="password" placeholder="Min. 6 karakter">
+    </div>
+    <button class="btn-primary mt12" onclick="changePass()">🔐 Ganti Password</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>ℹ️</span> Tentang</div>
+    <div style="font-size:14px">
+      <div style="font-weight:800;font-size:18px;background:linear-gradient(135deg,var(--p),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent">ARKX Motion Pro V2</div>
+      <div style="color:var(--t3);margin-top:6px">AI Video Generation Platform</div>
+      <div style="color:var(--t3)">Powered by Cloudflare Worker Proxy</div>
+      <div style="margin-top:12px;display:inline-block;background:var(--p);color:#fff;font-size:11px;padding:4px 12px;border-radius:20px;font-weight:700">v2.0.0</div>
     </div>
   </div>`;
 }
