@@ -73,10 +73,19 @@ async function doLogin() {
     if (r.ok) {
       S.user = r.user; S.token = r.token;
       localStorage.setItem('arkx_token', r.token);
-      $('authPage').classList.add('hidden');
-      enterApp();
+      try {
+        $('authPage').classList.add('hidden');
+        await enterApp();
+      } catch(enterErr) {
+        console.error('enterApp error:', enterErr);
+        showAuthError('loginError', 'Error masuk app: ' + enterErr.message);
+        $('authPage').classList.remove('hidden');
+      }
     } else showAuthError('loginError', r.error||'Login gagal');
-  } catch(e) { showAuthError('loginError', e.message); }
+  } catch(e) {
+    console.error('Login error:', e);
+    showAuthError('loginError', e.message);
+  }
   finally { setAuthLoading('loginBtn','loginBtnTxt',false,'Login'); }
 }
 
@@ -113,15 +122,21 @@ function doLogout() {
 
 // ── ENTER APP ─────────────────────────────────────────────────
 async function enterApp() {
-  $('mainApp').classList.remove('hidden');
+  const mainApp = $('mainApp');
+  if (!mainApp) throw new Error('mainApp element not found');
+  mainApp.classList.remove('hidden');
+
   // Set user info — safe access
-  $('sbUname').textContent  = S.user?.name || 'User';
-  $('sbUrole').textContent  = S.user?.plan === 'pro' ? '⭐ Pro' : S.user?.plan === 'enterprise' ? '👑 Enterprise' : S.user?.role || 'user';
-  $('sbAvatar').textContent = (S.user?.name || 'U')[0].toUpperCase();
+  const nameEl = $('sbUname'), roleEl = $('sbUrole'), avatarEl = $('sbAvatar');
+  if (nameEl)   nameEl.textContent   = S.user?.name || 'User';
+  if (roleEl)   roleEl.textContent   = S.user?.plan === 'pro' ? '⭐ Pro' : S.user?.plan === 'enterprise' ? '👑 Enterprise' : S.user?.role || 'user';
+  if (avatarEl) avatarEl.textContent = (S.user?.name || 'U')[0].toUpperCase();
+
   // Show admin menu if admin
   if (S.user?.role === 'admin') {
     document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
   }
+
   await Promise.all([loadModels(), loadKeys()]);
   wsConnect();
   setInterval(pollQueue, 4000);
