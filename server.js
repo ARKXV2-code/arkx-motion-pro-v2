@@ -53,7 +53,10 @@ app.post('/webhook/telegram', (req, res) => {
   res.sendStatus(200);
 });
 
-// SPA fallback
+// SPA fallback — landing di root, app di /app
+app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
+app.get('/app', (_, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/app/*', (_, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('*', (_, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // ── Error handler ─────────────────────────────────────────────
