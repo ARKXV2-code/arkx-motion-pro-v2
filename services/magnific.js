@@ -48,14 +48,14 @@ const MODELS = {
     provider: 'kling', mode: 'pro', maxDur: 10,
     t2v: false, i2v: true, motion: false,
     ep_submit: 'image-to-video/kling-v2-5-pro',
-    ep_poll:   'image-to-video/kling-v2-5-pro',
+    ep_poll:   'image-to-video/kling-v2-5-pro',  // GET /v1/ai/image-to-video/kling-v2-5-pro/{task-id}
   },
   // ── Kling 2.1 Pro — I2V only ─────────────────────────────
   'kling-2.1-pro': {
     provider: 'kling', mode: 'pro', maxDur: 10,
     t2v: false, i2v: true, motion: false,
     ep_submit: 'image-to-video/kling-v2-1-pro',
-    ep_poll:   'image-to-video/kling-v2-1-pro',
+    ep_poll:   'image-to-video/kling-v2-1',      // GET /v1/ai/image-to-video/kling-v2-1/{task-id}
   },
   // ── Kling Motion Control (max 30s) ────────────────────────
   'kling-motion-2.6-std': {
@@ -87,20 +87,20 @@ const MODELS = {
     provider: 'wan', maxDur: 10,
     t2v: true, i2v: false, motion: false,
     ep_submit: 'text-to-video/wan-2-5-t2v-1080p',
-    ep_poll:   'text-to-video/wan-2-5-t2v-1080p',
+    ep_poll:   'text-to-video/wan-2-5-t2v-1080p',  // GET /v1/ai/text-to-video/wan-2-5-t2v-1080p/{task-id}
   },
   'wan-i2v': {
     provider: 'wan', maxDur: 10,
     t2v: false, i2v: true, motion: false,
     ep_submit: 'image-to-video/wan-2-5-i2v-1080p',
-    ep_poll:   'image-to-video/wan-2-5-i2v-1080p',
+    ep_poll:   'image-to-video/wan-2-5-i2v-1080p',  // GET /v1/ai/image-to-video/wan-2-5-i2v-1080p/{task-id}
   },
   // ── Seedance Pro 1080p ────────────────────────────────────
   'seedance-pro': {
     provider: 'seedance', maxDur: 10,
     t2v: false, i2v: true, motion: false,
     ep_submit: 'image-to-video/seedance-pro-1080p',
-    ep_poll:   'image-to-video/seedance-pro-1080p',
+    ep_poll:   'image-to-video/seedance-pro-1080p',  // GET /v1/ai/image-to-video/seedance-pro-1080p/{task-id}
   },
 };
 
