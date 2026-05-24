@@ -101,13 +101,27 @@ const MODELS = {
     provider: 'wan', maxDur: 10,
     t2v: true, i2v: false, motion: false,
     ep_submit: 'text-to-video/wan-2-5-t2v-1080p',
-    ep_poll:   'text-to-video/wan-2-5-t2v-1080p',  // GET /v1/ai/text-to-video/wan-2-5-t2v-1080p/{task-id}
+    ep_poll:   'text-to-video/wan-2-5-t2v-1080p',
   },
   'wan-i2v': {
     provider: 'wan', maxDur: 10,
     t2v: false, i2v: true, motion: false,
     ep_submit: 'image-to-video/wan-2-5-i2v-1080p',
-    ep_poll:   'image-to-video/wan-2-5-i2v-1080p',  // GET /v1/ai/image-to-video/wan-2-5-i2v-1080p/{task-id}
+    ep_poll:   'image-to-video/wan-2-5-i2v-1080p',
+  },
+  // ── WAN 2.6 — I2V, max 15s, pakai size bukan aspect_ratio ─
+  'wan-2.6-i2v': {
+    provider: 'wan26', maxDur: 15,
+    t2v: false, i2v: true, motion: false,
+    ep_submit: 'image-to-video/wan-v2-6-1080p',
+    ep_poll:   'image-to-video/wan-v2-6-1080p',
+  },
+  // ── MiniMax Hailuo 02 — T2V + I2V, fixed 6s ──────────────
+  'hailuo-02': {
+    provider: 'hailuo', maxDur: 6,
+    t2v: true, i2v: true, motion: false,
+    ep_submit: 'image-to-video/minimax-hailuo-02-1080p',
+    ep_poll:   'image-to-video/minimax-hailuo-02-1080p',
   },
   // ── Seedance Pro 1080p ────────────────────────────────────
   'seedance-pro': {
@@ -130,6 +144,8 @@ const LABELS = {
   'kling-motion-3-pro':   'Kling Motion V3 Pro',
   'wan-t2v':              'WAN 2.5 Text→Video',
   'wan-i2v':              'WAN 2.5 Image→Video',
+  'wan-2.6-i2v':          'WAN 2.6 Image→Video',
+  'hailuo-02':            'MiniMax Hailuo 02',
   'seedance-pro':         'Seedance Pro 1080p',
 };
 
@@ -166,6 +182,13 @@ async function textToVideo({ modelId, prompt, negPrompt, duration, ratio, cfg })
       negative_prompt:          negPrompt || '',
       duration:                 dur,
       enable_prompt_expansion:  true,
+    };
+  } else if (m.provider === 'hailuo') {
+    // MiniMax Hailuo 02 T2V — durasi fixed 6
+    body = {
+      prompt,
+      duration:         6,
+      prompt_optimizer: true,
     };
   } else {
     body = { prompt, negative_prompt: negPrompt || '', duration: dur };
@@ -206,7 +229,7 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       cfg_scale:       parseFloat(cfg) || 0.5,
     };
   } else if (m.provider === 'wan') {
-    // WAN I2V: image harus URL publik
+    // WAN 2.5 I2V: image harus URL publik
     if (imageData.startsWith('data:')) throw new Error('WAN I2V membutuhkan URL publik, bukan base64. Gunakan ImgBB.');
     body = {
       prompt:                   prompt || '',
@@ -214,6 +237,31 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       negative_prompt:          negPrompt || '',
       duration:                 dur,
       enable_prompt_expansion:  true,
+    };
+  } else if (m.provider === 'wan26') {
+    // WAN 2.6 I2V: pakai size bukan aspect_ratio, image harus URL publik
+    if (imageData.startsWith('data:')) throw new Error('WAN 2.6 membutuhkan URL publik. Gunakan ImgBB.');
+    const WAN26_SIZE = {
+      '16:9': '1920*1080', '9:16': '1080*1920', '1:1': '1440*1440',
+      '4:3':  '1632*1248', '3:4':  '1248*1632',
+    };
+    body = {
+      prompt:                  prompt || '',
+      image:                   imageData,
+      negative_prompt:         negPrompt || '',
+      duration:                dur,
+      size:                    WAN26_SIZE[ratio] || '1920*1080',
+      enable_prompt_expansion: false,
+      shot_type:               'single',
+    };
+  } else if (m.provider === 'hailuo') {
+    // MiniMax Hailuo 02 I2V: pakai first_frame_image, durasi fixed 6
+    if (imageData.startsWith('data:')) throw new Error('Hailuo membutuhkan URL publik. Gunakan ImgBB.');
+    body = {
+      prompt:           prompt || '',
+      first_frame_image: imageData,
+      duration:         6,
+      prompt_optimizer: true,
     };
   } else if (m.provider === 'seedance') {
     body = {
