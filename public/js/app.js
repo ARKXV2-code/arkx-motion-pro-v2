@@ -141,11 +141,11 @@ function wsConnect() {
   S.ws.onmessage = e => {
     try {
       const m = JSON.parse(e.data);
-      if (m.type==='log')       addLog(m.entry.type, m.entry.msg);
+      if (m.type==='log')       addLog(m.entry?.type||'info', m.entry?.msg||'');
       if (m.type==='progress')  onProgress(m);
       if (m.type==='completed') onCompleted(m);
       if (m.type==='failed')    onFailed(m);
-      if (m.type==='queue')     updateQBadge(m.pending+m.running);
+      if (m.type==='queue')     updateQBadge((m.pending||0)+(m.running||0));
     } catch {}
   };
 }
