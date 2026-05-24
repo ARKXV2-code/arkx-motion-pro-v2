@@ -114,19 +114,19 @@ function doLogout() {
 // ── ENTER APP ─────────────────────────────────────────────────
 async function enterApp() {
   $('mainApp').classList.remove('hidden');
-  // Set user info
-  $('sbUname').textContent  = S.user.name;
-  $('sbUrole').textContent  = S.user.role;
-  $('sbAvatar').textContent = S.user.name[0].toUpperCase();
+  // Set user info — safe access
+  $('sbUname').textContent  = S.user?.name || 'User';
+  $('sbUrole').textContent  = S.user?.plan === 'pro' ? '⭐ Pro' : S.user?.plan === 'enterprise' ? '👑 Enterprise' : S.user?.role || 'user';
+  $('sbAvatar').textContent = (S.user?.name || 'U')[0].toUpperCase();
   // Show admin menu if admin
-  if (S.user.role === 'admin') {
+  if (S.user?.role === 'admin') {
     document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
   }
   await Promise.all([loadModels(), loadKeys()]);
   wsConnect();
   setInterval(pollQueue, 4000);
   setInterval(pollStats, 10000);
-  setInterval(pollActiveTasks, 6000); // poll active tasks progress
+  setInterval(pollActiveTasks, 6000);
   navTo('generate');
   pollStats();
 }
