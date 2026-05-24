@@ -6,11 +6,9 @@
 const fs     = require('fs-extra');
 const path   = require('path');
 const crypto = require('crypto');
+const db     = require('./supabase');
 
-const DATA_DIR    = process.env.RAILWAY_VOLUME_MOUNT_PATH
-  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'data')
-  : path.join(__dirname, '../data');
-
+const DATA_DIR    = path.join(__dirname, '../data');
 const FILE        = path.join(DATA_DIR, 'users.json');
 const ADMIN_EMAIL = 'nuallakoko@gmail.com';
 
@@ -18,25 +16,33 @@ let users = [];
 
 async function init() {
   await fs.ensureDir(DATA_DIR);
-  if (await fs.pathExists(FILE)) {
-    try { users = (await fs.readJson(FILE)).users || []; }
-    catch { users = []; }
+
+  if (db.isReady()) {
+    const rows = await db.select('users');
+    if (rows && rows.length > 0) {
+      users = rows.map(r => ({
+        id: r.id, email: r.email, name: r.name, role: r.role,
+        status: r.status, password: r.password,
+        createdAt: r.created_at, lastLogin: r.last_login,
+        telegramChatId: r.telegram_chat_id,
+      }));
+      console.log(`👤 Auth: ${users.length} users from Supabase`);
+    }
+  } else if (await fs.pathExists(FILE)) {
+    try { users = (await fs.readJson(FILE)).users || []; } catch { users = []; }
+    console.log(`👤 Auth: ${users.length} users from local`);
   }
+
   // Pastikan admin selalu ada
   if (!users.find(u => u.email === ADMIN_EMAIL)) {
-    users.push({
-      id:        _id(),
-      email:     ADMIN_EMAIL,
-      name:      'Admin',
-      role:      'admin',
-      status:    'approved',
-      password:  _hash('admin123'),
-      createdAt: new Date().toISOString(),
-      lastLogin: null,
-    });
+    const admin = {
+      id: _id(), email: ADMIN_EMAIL, name: 'Admin', role: 'admin',
+      status: 'approved', password: _hash('admin123'),
+      createdAt: new Date().toISOString(), lastLogin: null,
+    };
+    users.push(admin);
     await _save();
   }
-  console.log(`👤 Auth: ${users.length} users loaded`);
 }
 
 async function register(email, name, password) {
@@ -113,8 +119,20 @@ function _notifyAdmin(email, name) {
 }
 
 async function _save() {
-  try { await fs.writeJson(FILE, { users }, { spaces: 2 }); }
-  catch(e) { console.error('Auth save failed:', e.message); }
+  try {
+    await fs.ensureDir(DATA_DIR);
+    await fs.writeJson(FILE, { users }, { spaces: 2 });
+    if (db.isReady()) {
+      for (const u of users) {
+        await db.upsert('users', {
+          id: u.id, email: u.email, name: u.name, role: u.role,
+          status: u.status, password: u.password,
+          created_at: u.createdAt, last_login: u.lastLogin,
+          telegram_chat_id: u.telegramChatId || null,
+        });
+      }
+    }
+  } catch(e) { console.error('Auth save failed:', e.message); }
 }
 
 module.exports = {

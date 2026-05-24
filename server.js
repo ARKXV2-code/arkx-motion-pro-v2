@@ -64,13 +64,12 @@ app.use((err, req, res, next) => {
 
 // ── Boot ─────────────────────────────────────────────────────
 async function boot() {
-  // Support Railway Volume untuk persistent storage
-  const dataDir = process.env.RAILWAY_VOLUME_MOUNT_PATH
-    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'data')
-    : path.join(__dirname, 'data');
-
+  const dataDir = path.join(__dirname, 'data');
   await fs.ensureDir(dataDir);
   await fs.ensureDir(path.join(__dirname, 'tmp'));
+
+  // Init Supabase dulu (persistent storage)
+  await require('./services/supabase').init();
 
   await require('./services/keyStore').init();
   await require('./services/historyStore').init();
