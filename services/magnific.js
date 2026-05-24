@@ -14,44 +14,44 @@ const MODELS = {
     provider:'kling', mode:'std', maxDur:15,
     t2v:false, i2v:true, motion:false,
     ep_i2v:  'image-to-video/kling-v2-6-std',
-    ep_poll: 'image-to-video/kling-v2-6-std',
+    ep_poll: 'image-to-video/kling-v2-6',   // poll endpoint universal
   },
   'kling-2.6-pro': {
     provider:'kling', mode:'pro', maxDur:15,
     t2v:false, i2v:true, motion:false,
     ep_i2v:  'image-to-video/kling-v2-6-pro',
-    ep_poll: 'image-to-video/kling-v2-6-pro',
+    ep_poll: 'image-to-video/kling-v2-6',
   },
   'kling-2.5-pro': {
     provider:'kling', mode:'pro', maxDur:15,
     t2v:false, i2v:true, motion:false,
     ep_i2v:  'image-to-video/kling-v2-5-pro',
-    ep_poll: 'image-to-video/kling-v2-5-pro',
+    ep_poll: 'image-to-video/kling-v2-6',
   },
   // ── Kling Motion Control (max 30s) ────────────────────────
   'kling-motion-2.6-std': {
     provider:'kling', mode:'std', maxDur:30,
     t2v:false, i2v:false, motion:true,
     ep_motion: 'video/kling-v2-6-motion-control-std',
-    ep_poll:   'video/kling-v2-6-motion-control-std',
+    ep_poll:   'image-to-video/kling-v2-6',  // poll universal
   },
   'kling-motion-2.6-pro': {
     provider:'kling', mode:'pro', maxDur:30,
     t2v:false, i2v:false, motion:true,
     ep_motion: 'video/kling-v2-6-motion-control-pro',
-    ep_poll:   'video/kling-v2-6-motion-control-pro',
+    ep_poll:   'image-to-video/kling-v2-6',
   },
   'kling-motion-3-std': {
     provider:'kling', mode:'std', maxDur:30,
     t2v:false, i2v:false, motion:true,
     ep_motion: 'video/kling-v2-6-motion-control-std',
-    ep_poll:   'video/kling-v2-6-motion-control-std',
+    ep_poll:   'image-to-video/kling-v2-6',
   },
   'kling-motion-3-pro': {
     provider:'kling', mode:'pro', maxDur:30,
     t2v:false, i2v:false, motion:true,
     ep_motion: 'video/kling-v2-6-motion-control-pro',
-    ep_poll:   'video/kling-v2-6-motion-control-pro',
+    ep_poll:   'image-to-video/kling-v2-6',
   },
   // ── WAN Models ────────────────────────────────────────────
   'wan-t2v': {
@@ -175,7 +175,7 @@ async function waitDone(taskId, epPoll, onProgress) {
     _broadcast({ type: 'progress', taskId, ...s });
     log.info(`📊 ${taskId.slice(0,8)}: ${s.status} ${Math.round((s.progress||0)*100)}%`);
     if (['COMPLETED','completed','succeed','success','DONE'].includes(s.status)) return s;
-    if (['FAILED','failed','error','ERROR'].includes(s.status)) throw new Error(s.error || 'Task failed');
+    if (['FAILED','failed','error','ERROR','CANCELLED'].includes(s.status)) throw new Error(s.error || 'Task failed');
   }
   throw new Error('Timeout 10 menit');
 }
@@ -195,14 +195,22 @@ function _taskId(res) {
 
 function _parseStatus(taskId, res) {
   const data = res?.data || res;
-  const status   = data?.status || 'PENDING';
-  const progress = data?.progress || (status === 'COMPLETED' ? 1 : 0);
-  // Magnific returns: data.generated[0].url
-  const videoUrl = data?.generated?.[0]?.url
-    || data?.result?.url
-    || data?.video_url
-    || data?.output?.url
-    || null;
+  const status   = data?.status || 'CREATED';
+  const progress = status === 'COMPLETED' ? 1 : status === 'IN_PROGRESS' ? 0.5 : 0;
+
+  // Magnific response: data.generated = ["url1", "url2"] (array of strings)
+  let videoUrl = null;
+  if (Array.isArray(data?.generated) && data.generated.length > 0) {
+    videoUrl = data.generated[0]; // string URL langsung
+  }
+  // Fallback untuk format lain
+  if (!videoUrl) {
+    videoUrl = data?.generated?.[0]?.url
+      || data?.result?.url
+      || data?.video_url
+      || data?.output?.url
+      || null;
+  }
 
   return { taskId, status, progress, videoUrl, error: data?.error || null };
 }
