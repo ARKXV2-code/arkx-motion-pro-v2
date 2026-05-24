@@ -52,8 +52,13 @@ router.post('/i2v', upload.single('image'), async (req, res) => {
     let imageData = imageUrl || null;
     if (req.file) {
       validate(req.file, IMAGE_TYPES);
-      // Upload ke temp storage → dapat URL publik (tidak lewat CF Worker)
-      imageData = await uploadToTemp(req.file.buffer, req.file.originalname || 'image.jpg', req.file.mimetype);
+      // WAN I2V butuh URL publik — semua model pakai uploadToUrl untuk konsistensi
+      const modelCfg2 = mag.MODELS[modelId];
+      if (modelCfg2?.provider === 'wan' || modelCfg2?.provider === 'seedance') {
+        imageData = await uploadToUrl(req.file.buffer, req.file.originalname || 'image.jpg', req.file.mimetype);
+      } else {
+        imageData = await uploadToTemp(req.file.buffer, req.file.originalname || 'image.jpg', req.file.mimetype);
+      }
     }
     if (!imageData) return res.status(400).json({ ok:false, error:'image required' });
 
