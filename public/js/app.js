@@ -275,79 +275,73 @@ function renderGenerate(el) {
     <button class="mode-btn ${S.mode==='i2v'?'active':''}" onclick="setMode('i2v')">🖼️ Image → Video</button>
   </div>
 
-  <div class="grid2">
-    <div>
-      <div class="card">
-        <div class="card-title"><span>🤖</span> Model</div>
-        <div class="model-grid" id="modelGrid">${modelCards(list,S.model,'pickModel')}</div>
-      </div>
+  <div class="card">
+    <div class="card-title"><span>🤖</span> Model</div>
+    <div class="model-grid" id="modelGrid">${modelCards(list,S.model,'pickModel')}</div>
+  </div>
 
-      ${S.mode==='i2v'?`
-      <div class="card">
-        <div class="card-title"><span>🖼️</span> Input Image</div>
-        <div class="dropzone" id="imgDrop" onclick="$('imgFile').click()">
-          ${S.imgFile
-            ? `<img class="dz-preview" src="${URL.createObjectURL(S.imgFile)}" id="imgPreview">`
-            : `<div class="dz-icon">📸</div><div class="dz-title">Tap untuk upload gambar</div><div class="dz-sub">JPG · PNG · WebP · max 50MB</div>`}
-        </div>
-        <input type="file" id="imgFile" accept="image/*" class="hidden" onchange="onImgUpload(event)">
-      </div>`:''}
+  ${S.mode==='i2v'?`
+  <div class="card">
+    <div class="card-title"><span>🖼️</span> Input Image</div>
+    <div class="dropzone" id="imgDrop" onclick="$('imgFile').click()">
+      ${S.imgFile
+        ? `<img class="dz-preview" src="${URL.createObjectURL(S.imgFile)}">`
+        : `<div class="dz-icon">📸</div><div class="dz-title">Tap untuk upload gambar</div><div class="dz-sub">JPG · PNG · WebP · max 50MB</div>`}
+    </div>
+    <input type="file" id="imgFile" accept="image/*" class="hidden" onchange="onImgUpload(event)">
+  </div>`:''}
 
-      <div class="card">
-        <div class="card-title"><span>✍️</span> Prompt</div>
-        <div class="inp-group">
-          <textarea id="prompt" class="ta" rows="4" placeholder="Deskripsikan video kamu…&#10;Contoh: A cinematic ocean wave at golden hour, slow motion, 4K quality">${''}</textarea>
-          <div class="char-hint"><span id="promptLen">0</span>/500</div>
-        </div>
-        <div class="inp-group">
-          <label class="inp-label">Negative Prompt <span style="color:var(--t3);font-weight:400;text-transform:none">(opsional)</span></label>
-          <textarea id="negPrompt" class="ta" rows="2" placeholder="Apa yang ingin dihindari…"></textarea>
-        </div>
+  <div class="card">
+    <div class="card-title"><span>✍️</span> Prompt</div>
+    <div class="inp-group">
+      <textarea id="prompt" class="ta" rows="3" placeholder="Deskripsikan video kamu…&#10;Contoh: A cinematic ocean wave at golden hour, slow motion, 4K">${''}</textarea>
+      <div class="char-hint"><span id="promptLen">0</span>/500</div>
+    </div>
+    <div class="inp-group">
+      <label class="inp-label">Negative Prompt <span style="color:var(--t3);font-weight:400;text-transform:none">(opsional)</span></label>
+      <textarea id="negPrompt" class="ta" rows="2" placeholder="Apa yang ingin dihindari…"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>⚙️</span> Settings</div>
+    <div class="inp-group">
+      <label class="inp-label">⏱️ Durasi</label>
+      <div class="dur-row" id="durRow">
+        ${_durButtons(selectedModel)}
       </div>
     </div>
+    <div class="inp-group">
+      <label class="inp-label">📐 Rasio</label>
+      <select id="ratio" class="sel" onchange="S.ratio=this.value">
+        ${_ratioOptions(selectedModel)}
+      </select>
+    </div>
+    <div class="inp-group">
+      <label class="inp-label">🎚️ CFG Scale: <span class="slider-val" id="cfgVal">0.5</span></label>
+      <input type="range" id="cfg" min="0" max="1" step="0.1" value="0.5" class="slider"
+        oninput="$('cfgVal').textContent=this.value">
+    </div>
+  </div>
 
-    <div>
-      <div class="card">
-        <div class="card-title"><span>⚙️</span> Settings</div>
-        <div class="inp-group">
-          <label class="inp-label">⏱️ Durasi</label>
-          <div class="dur-row" id="durRow">
-            ${_durButtons(selectedModel)}
-          </div>
-        </div>
-        <div class="inp-group">
-          <label class="inp-label">📐 Rasio</label>
-          <select id="ratio" class="sel" onchange="S.ratio=this.value">
-            ${_ratioOptions(selectedModel)}
-          </select>
-        </div>
-        <div class="inp-group">
-          <label class="inp-label">🎚️ CFG Scale: <span class="slider-val" id="cfgVal">0.5</span></label>
-          <input type="range" id="cfg" min="0" max="1" step="0.1" value="0.5" class="slider"
-            oninput="$('cfgVal').textContent=this.value">
+  <div class="card">
+    <div class="card-title"><span>📦</span> Batch Mode</div>
+    <div class="batch-toggle-row">
+      <span style="font-size:13px;color:var(--t2)">Generate ${S.batchCount} video sekaligus</span>
+      <label class="toggle">
+        <input type="checkbox" id="batchToggle" ${S.batchOn?'checked':''} onchange="toggleBatch(this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="batch-panel ${S.batchOn?'':'hidden'}" id="batchPanel">
+      <div class="batch-info" style="margin-top:12px">Tiap video bisa punya prompt berbeda</div>
+      <div class="batch-count-row">
+        <span>Jumlah:</span>
+        <div class="batch-nums">
+          ${[2,3,4,5].map(n=>`<button class="batch-n ${S.batchCount===n?'active':''}" onclick="setBatchCount(${n})">${n}</button>`).join('')}
         </div>
       </div>
-
-      <div class="card">
-        <div class="card-title"><span>📦</span> Batch Mode</div>
-        <div class="batch-toggle-row">
-          <span style="font-size:13px;color:var(--t2)">Generate ${S.batchCount} video sekaligus</span>
-          <label class="toggle">
-            <input type="checkbox" id="batchToggle" ${S.batchOn?'checked':''} onchange="toggleBatch(this.checked)">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div class="batch-panel ${S.batchOn?'':'hidden'}" id="batchPanel">
-          <div class="batch-info" style="margin-top:12px">Tiap video bisa punya prompt berbeda</div>
-          <div class="batch-count-row">
-            <span>Jumlah:</span>
-            <div class="batch-nums">
-              ${[2,3,4,5].map(n=>`<button class="batch-n ${S.batchCount===n?'active':''}" onclick="setBatchCount(${n})">${n}</button>`).join('')}
-            </div>
-          </div>
-          <div id="batchPrompts"></div>
-        </div>
-      </div>
+      <div id="batchPrompts"></div>
     </div>
   </div>
 
@@ -1005,65 +999,89 @@ async function changePass(){const o=$('oldPass')?.value,n=$('newPass')?.value;if
 // ── DEBUG PAGE ────────────────────────────────────────────────
 async function renderDebug(el) {
   el.innerHTML = `
-  <div class="grid2">
-    <div>
-      <div class="card">
-        <div class="card-title"><span>🏥</span> API Health</div>
-        <div id="healthRows"></div>
+  <div class="card">
+    <div class="card-title"><span>🏥</span> API Health</div>
+    <div id="healthRows">
+      <div class="health-row">
+        <div class="h-dot idle" id="magDot"></div>
+        <div><div class="h-name">Magnific API</div><div class="h-status" id="magStatus">Checking…</div></div>
+        <div class="h-latency" id="magLatency">—</div>
       </div>
-      <div class="card">
-        <div class="card-title"><span>📊</span> Statistik</div>
-        <div id="statRows"></div>
+      <div class="health-row">
+        <div class="h-dot ${S.user?'ok':'idle'}" id="cfDot"></div>
+        <div><div class="h-name">Server</div><div class="h-status" id="cfStatus">Connected</div></div>
+        <div class="h-latency" id="cfLatency">—</div>
       </div>
     </div>
-    <div>
-      <div class="card" style="height:100%">
-        <div class="card-title" style="justify-content:space-between">
-          <span><span>📝</span> Live Logs</span>
-          <div style="display:flex;gap:6px">
-            <button class="btn-sm" onclick="clearLogs()">Clear</button>
-            <button class="btn-sm" onclick="loadLogs()">Refresh</button>
-          </div>
-        </div>
-        <div id="logConsole" class="log-console">
-          <div class="log-entry info">🚀 ARKX Motion Pro V2 initialized</div>
-        </div>
+    <button class="btn-sm mt12" onclick="checkMagnificHealth()">🔍 Test Koneksi Magnific</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>📊</span> Statistik</div>
+    <div id="statRows"></div>
+  </div>
+
+  <div class="card" style="height:auto">
+    <div class="card-title" style="justify-content:space-between;display:flex">
+      <span><span>📝</span> Live Logs</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn-sm" onclick="clearLogs()">Clear</button>
+        <button class="btn-sm" onclick="loadLogs()">Refresh</button>
       </div>
+    </div>
+    <div id="logConsole" class="log-console">
+      <div class="log-entry info">🚀 ARKX Motion Pro V2 initialized</div>
     </div>
   </div>`;
   await pollStats();
   await loadLogs();
+  await checkMagnificHealth();
 }
 
 async function pollStats() {
   try {
     const r = await apiAuth('/api/health');
-    const hEl = $('healthRows');
-    if (hEl) hEl.innerHTML = `
-      <div class="health-row">
-        <div class="h-dot ${r.workerConfigured?'ok':'err'}"></div>
-        <div><div class="h-name">Cloudflare Worker</div><div class="h-status">${r.workerConfigured?'Configured':'Belum diset'}</div></div>
-        <div class="h-latency">${r.workerConfigured?'✅':'⚠️'}</div>
-      </div>
-      <div class="health-row">
-        <div class="h-dot ${r.keys?.active>0?'ok':'err'}"></div>
-        <div><div class="h-name">Magnific API Keys</div><div class="h-status">${r.keys?.active||0} key aktif</div></div>
-        <div class="h-latency">${r.keys?.active||0}/${r.keys?.total||0}</div>
-      </div>`;
     const sEl = $('statRows');
     if (sEl) sEl.innerHTML = `
       <div class="stat-row"><span>Total Requests</span><span>${r.keys?.totalReq||0}</span></div>
       <div class="stat-row"><span>Success</span><span class="val-green">${r.keys?.totalOk||0}</span></div>
       <div class="stat-row"><span>Errors</span><span class="val-red">${r.keys?.totalErr||0}</span></div>
       <div class="stat-row"><span>Queue Pending</span><span>${r.queue?.pending||0}</span></div>
-      <div class="stat-row"><span>Uptime</span><span class="val-mono">${fmtUptime(r.uptime||0)}</span></div>`;
-    // Update topbar chips
+      <div class="stat-row"><span>Uptime</span><span class="val-mono">${fmtUptime(r.uptime||0)}</span></div>
+      <div class="stat-row"><span>Keys Aktif</span><span class="val-green">${r.keys?.active||0}/${r.keys?.total||0}</span></div>`;
     const wChip = $('workerChip');
     if (wChip) {
       wChip.querySelector('.chip-dot').className = `chip-dot ${r.workerConfigured?'green':''}`;
       $('workerChipTxt').textContent = r.workerConfigured ? 'Worker OK' : 'Worker';
     }
   } catch {}
+}
+
+async function checkMagnificHealth() {
+  const dot = $('magDot'), status = $('magStatus'), latency = $('magLatency');
+  if (!dot) return;
+  dot.className = 'h-dot idle';
+  if (status) status.textContent = 'Checking…';
+  try {
+    const r = await apiAuth('/api/health/magnific');
+    if (r.ipBlocked) {
+      dot.className = 'h-dot err';
+      if (status) status.textContent = '⛔ IP diblokir Magnific!';
+      if (latency) latency.textContent = `${r.latency}ms`;
+      toast('⛔ IP Railway diblokir Magnific!', 'error');
+    } else if (r.reachable) {
+      dot.className = 'h-dot ok';
+      if (status) status.textContent = '✅ IP OK — dapat diakses';
+      if (latency) latency.textContent = `${r.latency}ms`;
+    } else {
+      dot.className = 'h-dot err';
+      if (status) status.textContent = '❌ Tidak bisa reach Magnific';
+      if (latency) latency.textContent = '—';
+    }
+  } catch {
+    dot.className = 'h-dot err';
+    if (status) status.textContent = '❌ Check gagal';
+  }
 }
 
 async function loadLogs() {
