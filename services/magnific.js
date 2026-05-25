@@ -125,12 +125,12 @@ const MODELS = {
     ep_submit: 'image-to-video/minimax-hailuo-02-1080p',
     ep_poll:   'image-to-video/minimax-hailuo-02-1080p',
   },
-  // ── PixVerse V5 — I2V, verified ada di Magnific changelog Sep 2025 ──
-  'pixverse-v5': {
-    provider: 'pixverse', maxDur: 8,
+  // ── Kling 2.1 Master — I2V, verified changelog Jun 2025 ──
+  'kling-2.1-master': {
+    provider: 'kling21', mode: 'master', maxDur: 10,
     t2v: false, i2v: true, motion: false,
-    ep_submit: 'image-to-video/pixverse-v5',
-    ep_poll:   'image-to-video/pixverse-v5',
+    ep_submit: 'image-to-video/kling-v2-1-master',
+    ep_poll:   'image-to-video/kling-v2-1',
   },
 };
 
@@ -148,7 +148,7 @@ const LABELS = {
   'wan-i2v':              'WAN 2.5 Image→Video',
   'wan-2.6-i2v':          'WAN 2.6 Image→Video',
   'hailuo-02':            'MiniMax Hailuo 02',
-  'pixverse-v5':          'PixVerse V5',
+  'kling-2.1-master':     'Kling 2.1 Master',
 };
 
 // ── Text to Video ─────────────────────────────────────────────
@@ -208,7 +208,7 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
   const ep = m.ep_submit;
 
   // Semua provider kecuali kling21/kling25 butuh URL publik
-  const needsUrl = ['kling3','kling26','wan','wan26','hailuo','pixverse'];
+  const needsUrl = ['kling3','kling26','wan','wan26','hailuo','kling21'];
   if (needsUrl.includes(m.provider) && imageData.startsWith('data:')) {
     throw new Error(`${m.provider} membutuhkan URL publik, bukan base64.`);
   }
@@ -285,14 +285,14 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       duration:          6,
       prompt_optimizer:  true,
     };
-  } else if (m.provider === 'pixverse') {
-    // PixVerse V5: image_url (bukan image), duration integer 5 atau 8
+  } else if (m.provider === 'kling21') {
+    // Kling 2.1 Pro/Master: image (base64 or URL), duration string '5'/'10'
     body = {
-      image_url:       imageData,
+      image:           imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        parseInt(duration) >= 8 ? 8 : 5,
-      resolution:      '720p',
+      duration:        durKling2(duration),
+      cfg_scale:       parseFloat(cfg) || 0.7,
     };
   } else {
     body = {
