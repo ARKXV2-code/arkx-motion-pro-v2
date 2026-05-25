@@ -78,11 +78,6 @@ async function doLogin() {
       S.user = r.user;
       S.token = r.token;
       localStorage.setItem('arkx_token', r.token);
-      // Langsung masuk app tanpa redirect
-      const authPage = $('authPage');
-      const mainApp  = $('mainApp');
-      if (authPage) authPage.style.display = 'none';
-      if (mainApp)  mainApp.style.display  = 'flex';
       await enterApp();
     } else {
       showAuthError('loginError', r.error||'Login gagal');
