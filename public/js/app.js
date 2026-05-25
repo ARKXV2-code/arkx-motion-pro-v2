@@ -630,6 +630,12 @@ function onFailed(m) {
       // Jangan override kalau sudah ada video
       if (!t.videoUrl) {
         t.status='failed'; t.error=m.error;
+        // Auto-remove failed task setelah 8 detik
+        setTimeout(() => {
+          S.tasks.delete(t.qId);
+          renderTaskList('genTasks');
+          renderTaskList('motionTasks');
+        }, 8000);
       }
     }
   });
