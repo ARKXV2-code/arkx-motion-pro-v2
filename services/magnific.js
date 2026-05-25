@@ -46,37 +46,30 @@ function durInt(dur, max = 10) {
 }
 
 // ── Model registry ───────────────────────────────────────────
+// Status: ✅ confirmed jalan | ❓ belum ditest | ❌ 404 (dihapus)
 const MODELS = {
+  // ✅ Kling 3 Pro — T2V + I2V
   'kling-3-pro': {
     provider: 'kling3', mode: 'pro', maxDur: 15,
     t2v: true, i2v: true, motion: false,
     ep_submit: 'video/kling-v3-pro',
     ep_poll:   'video/kling-v3',
   },
-  'kling-3-std': {
-    provider: 'kling3', mode: 'std', maxDur: 15,
-    t2v: true, i2v: true, motion: false,
-    ep_submit: 'video/kling-v3-std',
-    ep_poll:   'video/kling-v3',
-  },
+  // ✅ Kling 2.6 Pro — T2V + I2V
   'kling-2.6-pro': {
     provider: 'kling26', mode: 'pro', maxDur: 10,
     t2v: true, i2v: true, motion: false,
     ep_submit: 'image-to-video/kling-v2-6-pro',
     ep_poll:   'image-to-video/kling-v2-6',
   },
+  // ❓ Kling 2.5 Pro — I2V only (belum ditest)
   'kling-2.5-pro': {
     provider: 'kling25', mode: 'pro', maxDur: 10,
     t2v: false, i2v: true, motion: false,
     ep_submit: 'image-to-video/kling-v2-5-pro',
     ep_poll:   'image-to-video/kling-v2-5-pro',
   },
-  'kling-2.1-pro': {
-    provider: 'kling21', mode: 'pro', maxDur: 10,
-    t2v: false, i2v: true, motion: false,
-    ep_submit: 'image-to-video/kling-v2-1-pro',
-    ep_poll:   'image-to-video/kling-v2-1',
-  },
+  // ✅ Motion Control 2.6
   'kling-motion-2.6-std': {
     provider: 'motion', mode: 'std', maxDur: 10,
     t2v: false, i2v: false, motion: true,
@@ -89,36 +82,21 @@ const MODELS = {
     ep_motion: 'video/kling-v2-6-motion-control-pro',
     ep_poll:   'image-to-video/kling-v2-6',
   },
-  'kling-motion-3-std': {
-    provider: 'motion', mode: 'std', maxDur: 10,
-    t2v: false, i2v: false, motion: true,
-    ep_motion: 'video/kling-v2-6-motion-control-std',
-    ep_poll:   'image-to-video/kling-v2-6',
-  },
-  'kling-motion-3-pro': {
-    provider: 'motion', mode: 'pro', maxDur: 10,
-    t2v: false, i2v: false, motion: true,
-    ep_motion: 'video/kling-v2-6-motion-control-pro',
-    ep_poll:   'image-to-video/kling-v2-6',
-  },
+  // ✅ WAN 2.5 T2V
   'wan-t2v': {
     provider: 'wan', maxDur: 10,
     t2v: true, i2v: false, motion: false,
     ep_submit: 'text-to-video/wan-2-5-t2v-1080p',
     ep_poll:   'text-to-video/wan-2-5-t2v-1080p',
   },
+  // ❓ WAN 2.5 I2V (belum ditest)
   'wan-i2v': {
     provider: 'wan', maxDur: 10,
     t2v: false, i2v: true, motion: false,
     ep_submit: 'image-to-video/wan-2-5-i2v-1080p',
     ep_poll:   'image-to-video/wan-2-5-i2v-1080p',
   },
-  'wan-2.6-i2v': {
-    provider: 'wan26', maxDur: 15,
-    t2v: false, i2v: true, motion: false,
-    ep_submit: 'image-to-video/wan-v2-6-1080p',
-    ep_poll:   'image-to-video/wan-v2-6-1080p',
-  },
+  // ✅ Hailuo 02 — T2V + I2V
   'hailuo-02': {
     provider: 'hailuo', maxDur: 6,
     t2v: true, i2v: true, motion: false,
@@ -129,17 +107,12 @@ const MODELS = {
 
 const LABELS = {
   'kling-3-pro':          'Kling 3 Pro',
-  'kling-3-std':          'Kling 3 Standard',
   'kling-2.6-pro':        'Kling 2.6 Pro',
   'kling-2.5-pro':        'Kling 2.5 Pro',
-  'kling-2.1-pro':        'Kling 2.1 Pro',
   'kling-motion-2.6-std': 'Kling Motion 2.6 Std',
   'kling-motion-2.6-pro': 'Kling Motion 2.6 Pro',
-  'kling-motion-3-std':   'Kling Motion V3 Std',
-  'kling-motion-3-pro':   'Kling Motion V3 Pro',
   'wan-t2v':              'WAN 2.5 Text→Video',
   'wan-i2v':              'WAN 2.5 Image→Video',
-  'wan-2.6-i2v':          'WAN 2.6 Image→Video',
   'hailuo-02':            'MiniMax Hailuo 02',
 };
 
