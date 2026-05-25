@@ -30,9 +30,30 @@ window.addEventListener('DOMContentLoaded', () => {
       S.token = saved;
       try {
         const r = await api('/api/auth/me');
-        if (r.ok) { S.user = r.user; enterApp(); return; }
+        if (r.ok) {
+          S.user = r.user;
+          $('authPage').classList.add('hidden');
+          await enterApp();
+          return;
+        }
       } catch {}
       localStorage.removeItem('arkx_token');
+    }
+    // Cek apakah ada hash #dashboard (dari redirect setelah login)
+    if (window.location.hash === '#dashboard') {
+      const token = localStorage.getItem('arkx_token');
+      if (token) {
+        S.token = token;
+        try {
+          const r = await api('/api/auth/me');
+          if (r.ok) {
+            S.user = r.user;
+            $('authPage').classList.add('hidden');
+            await enterApp();
+            return;
+          }
+        } catch {}
+      }
     }
     showAuth();
   });
@@ -73,17 +94,10 @@ async function doLogin() {
     if (r.ok) {
       S.user = r.user; S.token = r.token;
       localStorage.setItem('arkx_token', r.token);
-      try {
-        $('authPage').classList.add('hidden');
-        await enterApp();
-      } catch(enterErr) {
-        console.error('enterApp error:', enterErr);
-        showAuthError('loginError', 'Error masuk app: ' + enterErr.message);
-        $('authPage').classList.remove('hidden');
-      }
+      // Redirect ke /app dengan hash untuk trigger app load
+      window.location.href = '/app#dashboard';
     } else showAuthError('loginError', r.error||'Login gagal');
   } catch(e) {
-    console.error('Login error:', e);
     showAuthError('loginError', e.message);
   }
   finally { setAuthLoading('loginBtn','loginBtnTxt',false,'Login'); }
