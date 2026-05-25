@@ -82,13 +82,6 @@ const MODELS = {
     ep_submit: 'text-to-video/wan-2-5-t2v-1080p',
     ep_poll:   'text-to-video/wan-2-5-t2v-1080p',
   },
-  // ❓ WAN 2.5 I2V (belum ditest)
-  'wan-i2v': {
-    provider: 'wan', maxDur: 10,
-    t2v: false, i2v: true, motion: false,
-    ep_submit: 'image-to-video/wan-2-5-i2v-1080p',
-    ep_poll:   'image-to-video/wan-2-5-i2v-1080p',
-  },
   // ✅ Hailuo 02 — T2V + I2V
   'hailuo-02': {
     provider: 'hailuo', maxDur: 6,
@@ -104,7 +97,6 @@ const LABELS = {
   'kling-motion-2.6-std': 'Kling Motion 2.6 Std',
   'kling-motion-2.6-pro': 'Kling Motion 2.6 Pro',
   'wan-t2v':              'WAN 2.5 Text→Video',
-  'wan-i2v':              'WAN 2.5 Image→Video',
   'hailuo-02':            'MiniMax Hailuo 02',
 };
 
