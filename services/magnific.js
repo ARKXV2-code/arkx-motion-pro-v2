@@ -125,11 +125,12 @@ const MODELS = {
     ep_submit: 'image-to-video/minimax-hailuo-02-1080p',
     ep_poll:   'image-to-video/minimax-hailuo-02-1080p',
   },
-  'seedance-pro': {
-    provider: 'seedance', maxDur: 10,
+  // ── PixVerse V5 — I2V, verified ada di Magnific changelog Sep 2025 ──
+  'pixverse-v5': {
+    provider: 'pixverse', maxDur: 8,
     t2v: false, i2v: true, motion: false,
-    ep_submit: 'image-to-video/seedance-pro-1080p',
-    ep_poll:   'image-to-video/seedance-pro-1080p',
+    ep_submit: 'image-to-video/pixverse-v5',
+    ep_poll:   'image-to-video/pixverse-v5',
   },
 };
 
@@ -147,7 +148,7 @@ const LABELS = {
   'wan-i2v':              'WAN 2.5 Image→Video',
   'wan-2.6-i2v':          'WAN 2.6 Image→Video',
   'hailuo-02':            'MiniMax Hailuo 02',
-  'seedance-pro':         'Seedance Pro 1080p',
+  'pixverse-v5':          'PixVerse V5',
 };
 
 // ── Text to Video ─────────────────────────────────────────────
@@ -207,7 +208,7 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
   const ep = m.ep_submit;
 
   // Semua provider kecuali kling21/kling25 butuh URL publik
-  const needsUrl = ['kling3','kling26','wan','wan26','hailuo','seedance'];
+  const needsUrl = ['kling3','kling26','wan','wan26','hailuo','pixverse'];
   if (needsUrl.includes(m.provider) && imageData.startsWith('data:')) {
     throw new Error(`${m.provider} membutuhkan URL publik, bukan base64.`);
   }
@@ -284,14 +285,13 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       duration:          6,
       prompt_optimizer:  true,
     };
-  } else if (m.provider === 'seedance') {
-    // Seedance: image URL, duration integer
+  } else if (m.provider === 'pixverse') {
+    // PixVerse V5: image URL, duration integer
     body = {
       image:           imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
       duration:        durInt(duration, m.maxDur),
-      aspect_ratio:    ratio || '16:9',
     };
   } else {
     body = {
