@@ -2,17 +2,16 @@
  * Magnific AI — Video Generation Service
  * Base: https://api.magnific.com
  * Auth: x-magnific-api-key header
- * Docs: https://docs.magnific.com
  *
- * VERIFIED ENDPOINTS (dari docs resmi):
- * - POST /v1/ai/image-to-video/kling-v2-6-pro     → Kling 2.6 Pro T2V+I2V
- * - POST /v1/ai/image-to-video/kling-v2-5-pro     → Kling 2.5 Pro I2V
- * - POST /v1/ai/image-to-video/kling-v2-1-pro     → Kling 2.1 Pro I2V
- * - POST /v1/ai/image-to-video/wan-2-5-i2v-1080p  → WAN 2.5 I2V
- * - POST /v1/ai/text-to-video/wan-2-5-t2v-1080p   → WAN 2.5 T2V
- * - POST /v1/ai/image-to-video/seedance-pro-1080p → Seedance Pro
- * - POST /v1/ai/video/kling-v2-6-motion-control-std/pro → Motion Control
- * Poll: GET /v1/ai/image-to-video/kling-v2-6/{task-id}
+ * DURATION FORMAT (verified dari docs resmi):
+ * - Kling 3 Pro/Std  : enum<string> '3'-'15'
+ * - Kling 2.6 Pro    : enum<string> '5' | '10'
+ * - Kling 2.5 Pro    : enum<string> '5' | '10'
+ * - Kling 2.1 Pro    : enum<string> '5' | '10'
+ * - Hailuo 02        : enum<integer> 6 (fixed)
+ * - WAN 2.5/2.6      : integer
+ * - Seedance Pro     : integer
+ * - Motion Control   : tidak ada field duration
  */
 const { call } = require('./cfProxy');
 const log = require('./logger');
@@ -22,91 +21,86 @@ const KLING26_RATIO = {
   '16:9':  'widescreen_16_9',
   '9:16':  'social_story_9_16',
   '1:1':   'square_1_1',
-  '4:3':   'widescreen_16_9',  // fallback
-  '3:4':   'social_story_9_16', // fallback
-  '21:9':  'widescreen_16_9',  // fallback
+  '4:3':   'widescreen_16_9',
+  '3:4':   'social_story_9_16',
+  '21:9':  'widescreen_16_9',
 };
 
-// Duration — Kling 3 butuh string, model lain butuh integer
-function clampDur(dur, max = 10) {
-  const d = parseInt(dur) || 5;
-  if (d <= 5) return 5;
-  return Math.min(d, max);
+// ── Duration helpers ──────────────────────────────────────────
+// Kling 3: string '3'-'15'
+function durKling3(dur, max = 15) {
+  const d = Math.max(3, Math.min(parseInt(dur) || 5, max));
+  return String(d);
 }
 
-// Kling 3 khusus butuh string duration
-function clampDurStr(dur, max = 15) {
+// Kling 2.x: string '5' atau '10' only
+function durKling2(dur) {
   const d = parseInt(dur) || 5;
-  if (d <= 5) return '5';
-  return String(Math.min(d, max));
+  return d <= 5 ? '5' : '10';
+}
+
+// WAN/Seedance: integer
+function durInt(dur, max = 10) {
+  const d = parseInt(dur) || 5;
+  return Math.max(1, Math.min(d, max));
 }
 
 // ── Model registry ───────────────────────────────────────────
 const MODELS = {
-  // ── Kling 3 Pro — T2V + I2V, max 15s ────────────────────
   'kling-3-pro': {
     provider: 'kling3', mode: 'pro', maxDur: 15,
     t2v: true, i2v: true, motion: false,
-    ep_submit:     'video/kling-v3-pro',
-    ep_submit_i2v: 'video/kling-v3-pro',   // same endpoint, different body
-    ep_poll:       'video/kling-v3',
+    ep_submit: 'video/kling-v3-pro',
+    ep_poll:   'video/kling-v3',
   },
-  // ── Kling 3 Std — T2V + I2V, max 15s ────────────────────
   'kling-3-std': {
     provider: 'kling3', mode: 'std', maxDur: 15,
     t2v: true, i2v: true, motion: false,
-    ep_submit:     'video/kling-v3-std',
-    ep_submit_i2v: 'video/kling-v3-std',
-    ep_poll:       'video/kling-v3',
+    ep_submit: 'video/kling-v3-std',
+    ep_poll:   'video/kling-v3',
   },
-  // ── Kling 2.6 Pro — T2V + I2V ────────────────────────────
   'kling-2.6-pro': {
     provider: 'kling26', mode: 'pro', maxDur: 10,
     t2v: true, i2v: true, motion: false,
-    ep_submit:     'image-to-video/kling-v2-6-pro',  // T2V: no image field
-    ep_submit_i2v: 'image-to-video/kling-v2-6-pro',  // I2V: with image field
-    ep_poll:       'image-to-video/kling-v2-6',
+    ep_submit: 'image-to-video/kling-v2-6-pro',
+    ep_poll:   'image-to-video/kling-v2-6',
   },
-  // ── Kling 2.5 Pro — I2V only ─────────────────────────────
   'kling-2.5-pro': {
-    provider: 'kling', mode: 'pro', maxDur: 10,
+    provider: 'kling25', mode: 'pro', maxDur: 10,
     t2v: false, i2v: true, motion: false,
     ep_submit: 'image-to-video/kling-v2-5-pro',
     ep_poll:   'image-to-video/kling-v2-5-pro',
   },
-  // ── Kling 2.1 Pro — I2V only ─────────────────────────────
   'kling-2.1-pro': {
-    provider: 'kling', mode: 'pro', maxDur: 10,
+    provider: 'kling21', mode: 'pro', maxDur: 10,
     t2v: false, i2v: true, motion: false,
     ep_submit: 'image-to-video/kling-v2-1-pro',
     ep_poll:   'image-to-video/kling-v2-1',
   },
-  // ── Kling Motion Control (max 30s) ────────────────────────
   'kling-motion-2.6-std': {
-    provider: 'kling', mode: 'std', maxDur: 30,
+    provider: 'motion', mode: 'std', maxDur: 10,
     t2v: false, i2v: false, motion: true,
     ep_motion: 'video/kling-v2-6-motion-control-std',
     ep_poll:   'image-to-video/kling-v2-6',
   },
   'kling-motion-2.6-pro': {
-    provider: 'kling', mode: 'pro', maxDur: 30,
+    provider: 'motion', mode: 'pro', maxDur: 10,
     t2v: false, i2v: false, motion: true,
     ep_motion: 'video/kling-v2-6-motion-control-pro',
     ep_poll:   'image-to-video/kling-v2-6',
   },
   'kling-motion-3-std': {
-    provider: 'kling', mode: 'std', maxDur: 30,
+    provider: 'motion', mode: 'std', maxDur: 10,
     t2v: false, i2v: false, motion: true,
     ep_motion: 'video/kling-v2-6-motion-control-std',
     ep_poll:   'image-to-video/kling-v2-6',
   },
   'kling-motion-3-pro': {
-    provider: 'kling', mode: 'pro', maxDur: 30,
+    provider: 'motion', mode: 'pro', maxDur: 10,
     t2v: false, i2v: false, motion: true,
     ep_motion: 'video/kling-v2-6-motion-control-pro',
     ep_poll:   'image-to-video/kling-v2-6',
   },
-  // ── WAN 2.5 ───────────────────────────────────────────────
   'wan-t2v': {
     provider: 'wan', maxDur: 10,
     t2v: true, i2v: false, motion: false,
@@ -119,21 +113,18 @@ const MODELS = {
     ep_submit: 'image-to-video/wan-2-5-i2v-1080p',
     ep_poll:   'image-to-video/wan-2-5-i2v-1080p',
   },
-  // ── WAN 2.6 — I2V, max 15s ───────────────────────────────
   'wan-2.6-i2v': {
     provider: 'wan26', maxDur: 15,
     t2v: false, i2v: true, motion: false,
     ep_submit: 'image-to-video/wan-v2-6-1080p',
     ep_poll:   'image-to-video/wan-v2-6-1080p',
   },
-  // ── MiniMax Hailuo 02 — T2V + I2V, fixed 6s ──────────────
   'hailuo-02': {
     provider: 'hailuo', maxDur: 6,
     t2v: true, i2v: true, motion: false,
     ep_submit: 'image-to-video/minimax-hailuo-02-1080p',
     ep_poll:   'image-to-video/minimax-hailuo-02-1080p',
   },
-  // ── Seedance Pro 1080p ────────────────────────────────────
   'seedance-pro': {
     provider: 'seedance', maxDur: 10,
     t2v: false, i2v: true, motion: false,
@@ -163,32 +154,31 @@ const LABELS = {
 async function textToVideo({ modelId, prompt, negPrompt, duration, ratio, cfg }) {
   const m = _model(modelId);
   if (!m.t2v) throw new Error(`${modelId} tidak support text-to-video`);
-  const dur = clampDur(duration, m.maxDur);
-  log.info(`🎬 T2V: ${modelId} | ${dur}s | ${ratio}`);
+  log.info(`🎬 T2V: ${modelId} | ${duration}s | ${ratio}`);
 
   let body;
   if (m.provider === 'kling3') {
     body = {
       prompt,
       negative_prompt: negPrompt || '',
-      duration:        clampDurStr(duration, m.maxDur), // string '3'-'15'
+      duration:        durKling3(duration, m.maxDur),
       aspect_ratio:    ratio || '16:9',
-      cfg_scale:       parseFloat(cfg) || 0.5,
+      cfg_scale:       parseFloat(cfg) || 0.7,
       generate_audio:  false,
     };
   } else if (m.provider === 'kling26') {
     body = {
       prompt,
       negative_prompt: negPrompt || '',
-      duration:        clampDur(duration, m.maxDur),    // integer
+      duration:        durKling2(duration),
       aspect_ratio:    KLING26_RATIO[ratio] || 'widescreen_16_9',
-      cfg_scale:       parseFloat(cfg) || 0.5,
+      cfg_scale:       parseFloat(cfg) || 0.7,
     };
   } else if (m.provider === 'wan') {
     body = {
       prompt,
       negative_prompt:         negPrompt || '',
-      duration:                clampDur(duration, m.maxDur),
+      duration:                durInt(duration, m.maxDur),
       enable_prompt_expansion: true,
     };
   } else if (m.provider === 'hailuo') {
@@ -201,12 +191,11 @@ async function textToVideo({ modelId, prompt, negPrompt, duration, ratio, cfg })
     body = {
       prompt,
       negative_prompt: negPrompt || '',
-      duration:        clampDur(duration, m.maxDur),
+      duration:        durInt(duration, m.maxDur),
     };
   }
 
   const res = await call(`/v1/ai/${m.ep_submit}`, 'POST', body);
-  log.info(`📦 T2V body: ${JSON.stringify(body).slice(0, 200)}`);
   return { taskId: _taskId(res), ep_poll: m.ep_poll };
 }
 
@@ -214,11 +203,10 @@ async function textToVideo({ modelId, prompt, negPrompt, duration, ratio, cfg })
 async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, ratio, cfg }) {
   const m = _model(modelId);
   if (!m.i2v) throw new Error(`${modelId} tidak support image-to-video`);
-  const dur = clampDur(duration, m.maxDur);
-  log.info(`🖼️ I2V: ${modelId} | ${dur}s | ${ratio}`);
-  const ep = m.ep_submit_i2v || m.ep_submit;
+  log.info(`🖼️ I2V: ${modelId} | ${duration}s | ${ratio}`);
+  const ep = m.ep_submit;
 
-  // Pastikan tidak ada base64 untuk provider yang butuh URL
+  // Semua provider kecuali kling21/kling25 butuh URL publik
   const needsUrl = ['kling3','kling26','wan','wan26','hailuo','seedance'];
   if (needsUrl.includes(m.provider) && imageData.startsWith('data:')) {
     throw new Error(`${m.provider} membutuhkan URL publik, bukan base64.`);
@@ -226,33 +214,55 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
 
   let body;
   if (m.provider === 'kling3') {
+    // Kling 3: image_url, duration string '3'-'15'
     body = {
       image_url:       imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        clampDurStr(duration, m.maxDur), // string '3'-'15'
+      duration:        durKling3(duration, m.maxDur),
       aspect_ratio:    ratio || '16:9',
-      cfg_scale:       parseFloat(cfg) || 0.5,
+      cfg_scale:       parseFloat(cfg) || 0.7,
       generate_audio:  false,
     };
   } else if (m.provider === 'kling26') {
+    // Kling 2.6: image URL, duration string '5'/'10', aspect_ratio mapped
     body = {
       image:           imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        clampDur(duration, m.maxDur),
+      duration:        durKling2(duration),
       aspect_ratio:    KLING26_RATIO[ratio] || 'widescreen_16_9',
-      cfg_scale:       parseFloat(cfg) || 0.5,
+      cfg_scale:       parseFloat(cfg) || 0.7,
+    };
+  } else if (m.provider === 'kling25') {
+    // Kling 2.5: image (base64 or URL), duration string '5'/'10'
+    body = {
+      image:           imageData,
+      prompt:          prompt || '',
+      negative_prompt: negPrompt || '',
+      duration:        durKling2(duration),
+      cfg_scale:       parseFloat(cfg) || 0.7,
+    };
+  } else if (m.provider === 'kling21') {
+    // Kling 2.1: image (base64 or URL), duration string '5'/'10'
+    body = {
+      image:           imageData,
+      prompt:          prompt || '',
+      negative_prompt: negPrompt || '',
+      duration:        durKling2(duration),
+      cfg_scale:       parseFloat(cfg) || 0.7,
     };
   } else if (m.provider === 'wan') {
+    // WAN 2.5 I2V: image URL, duration integer
     body = {
       prompt:                  prompt || '',
       image:                   imageData,
       negative_prompt:         negPrompt || '',
-      duration:                clampDur(duration, m.maxDur),
+      duration:                durInt(duration, m.maxDur),
       enable_prompt_expansion: true,
     };
   } else if (m.provider === 'wan26') {
+    // WAN 2.6 I2V: image URL, size instead of aspect_ratio, duration integer
     const WAN26_SIZE = {
       '16:9': '1920*1080', '9:16': '1080*1920', '1:1': '1440*1440',
       '4:3':  '1632*1248', '3:4':  '1248*1632',
@@ -261,12 +271,13 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       prompt:                  prompt || '',
       image:                   imageData,
       negative_prompt:         negPrompt || '',
-      duration:                clampDur(duration, m.maxDur),
+      duration:                durInt(duration, m.maxDur),
       size:                    WAN26_SIZE[ratio] || '1920*1080',
       enable_prompt_expansion: false,
       shot_type:               'single',
     };
   } else if (m.provider === 'hailuo') {
+    // Hailuo: first_frame_image URL, duration integer 6 (fixed)
     body = {
       prompt:            prompt || '',
       first_frame_image: imageData,
@@ -274,43 +285,41 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       prompt_optimizer:  true,
     };
   } else if (m.provider === 'seedance') {
+    // Seedance: image URL, duration integer
     body = {
       image:           imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        clampDur(duration, m.maxDur),
+      duration:        durInt(duration, m.maxDur),
       aspect_ratio:    ratio || '16:9',
     };
   } else {
-    // Kling 2.1/2.5 Pro — support base64
     body = {
       image:           imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        clampDur(duration, m.maxDur),
-      cfg_scale:       parseFloat(cfg) || 0.5,
+      duration:        durInt(duration, m.maxDur),
+      cfg_scale:       parseFloat(cfg) || 0.7,
     };
   }
 
   const res = await call(`/v1/ai/${ep}`, 'POST', body);
-  log.info(`📦 I2V body: ${JSON.stringify(body).slice(0, 200)}`);
   return { taskId: _taskId(res), ep_poll: m.ep_poll };
 }
 
-// ── Motion Control (max 30s) ──────────────────────────────────
+// ── Motion Control ────────────────────────────────────────────
 async function motionControl({ modelId, imageData, videoData, prompt, duration, ratio, strength }) {
   const m = _model(modelId);
   if (!m.motion) throw new Error(`${modelId} tidak support motion control`);
-  const dur = Math.min(parseInt(duration) || 5, 30);
-  log.info(`🎮 Motion: ${modelId} | ${dur}s | ${ratio}`);
+  log.info(`🎮 Motion: ${modelId} | ${ratio}`);
 
   if (!imageData) throw new Error('image_url wajib untuk motion control');
   if (imageData.startsWith('data:')) throw new Error('Image harus URL publik untuk motion control');
 
+  // Motion control docs: tidak ada field duration
   const body = {
     image_url:             imageData,
     prompt:                prompt || '',
-    duration:              dur,                          // integer
     cfg_scale:             parseFloat(strength) || 0.5,
     character_orientation: 'video',
   };
@@ -337,17 +346,17 @@ async function waitDone(taskId, epPoll, queueId, onProgress) {
     await sleep(5000);
     try {
       const s = await pollTask(taskId, epPoll);
-      consecutiveBlocks = 0; // reset kalau berhasil
+      consecutiveBlocks = 0;
       if (onProgress) onProgress(s);
       _broadcast({ type: 'progress', taskId, queueId, ...s });
       log.info(`📊 ${taskId.slice(0,8)}: ${s.status} ${Math.round((s.progress||0)*100)}%`);
       if (['COMPLETED','completed','succeed','success','DONE'].includes(s.status)) return s;
       if (['FAILED','failed','error','ERROR','CANCELLED'].includes(s.status)) throw new Error(s.error || 'Task failed');
     } catch (err) {
-      // Kalau IP block saat polling — skip poll ini, coba lagi di iterasi berikutnya
-      if (err.message.includes('IP') || err.message.includes('block') || err.message.includes('suspicious') || err.message.includes('403') || err.message.includes('diblokir')) {
+      if (err.message.includes('IP') || err.message.includes('block') ||
+          err.message.includes('suspicious') || err.message.includes('diblokir')) {
         consecutiveBlocks++;
-        if (consecutiveBlocks >= 12) throw new Error('Poll terus di-block. Task mungkin sudah selesai, cek History.');
+        if (consecutiveBlocks >= 12) throw new Error('Poll terus di-block. Cek History untuk hasil video.');
         await sleep(10000);
         continue;
       }
@@ -360,7 +369,7 @@ async function waitDone(taskId, epPoll, queueId, onProgress) {
 // ── Helpers ───────────────────────────────────────────────────
 function _model(id) {
   const m = MODELS[id];
-  if (!m) throw new Error(`Model tidak dikenal: ${id}. Model tersedia: ${Object.keys(MODELS).join(', ')}`);
+  if (!m) throw new Error(`Model tidak dikenal: ${id}`);
   return m;
 }
 
@@ -374,21 +383,18 @@ function _parseStatus(taskId, res) {
   const data = res?.data || res;
   const status = data?.status || 'CREATED';
 
-  // Progress mapping — lebih akurat
   let progress = 0;
   const s = status.toUpperCase();
-  if      (s === 'COMPLETED' || s === 'SUCCEED' || s === 'SUCCESS' || s === 'DONE') progress = 1;
-  else if (s === 'IN_PROGRESS' || s === 'PROCESSING' || s === 'RUNNING')            progress = 0.5;
-  else if (s === 'CREATED' || s === 'QUEUED' || s === 'PENDING')                    progress = 0.1;
+  if      (['COMPLETED','SUCCEED','SUCCESS','DONE'].includes(s)) progress = 1;
+  else if (['IN_PROGRESS','PROCESSING','RUNNING'].includes(s))   progress = 0.5;
+  else if (['CREATED','QUEUED','PENDING'].includes(s))           progress = 0.1;
 
-  // Ambil progress dari API kalau ada (0-100 atau 0-1)
   if (data?.progress !== undefined) {
     const p = parseFloat(data.progress);
     progress = p > 1 ? p / 100 : p;
   }
 
   let videoUrl = null;
-  // Cek berbagai format response
   if (Array.isArray(data?.generated) && data.generated.length > 0) {
     videoUrl = typeof data.generated[0] === 'string' ? data.generated[0] : data.generated[0]?.url;
   }
