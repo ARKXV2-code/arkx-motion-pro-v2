@@ -27,8 +27,15 @@ const KLING26_RATIO = {
   '21:9':  'widescreen_16_9',  // fallback
 };
 
-// Duration hanya 5 atau 10 untuk semua model Kling
+// Duration — Kling 3 butuh string, model lain butuh integer
 function clampDur(dur, max = 10) {
+  const d = parseInt(dur) || 5;
+  if (d <= 5) return 5;
+  return Math.min(d, max);
+}
+
+// Kling 3 khusus butuh string duration
+function clampDurStr(dur, max = 15) {
   const d = parseInt(dur) || 5;
   if (d <= 5) return '5';
   return String(Math.min(d, max));
@@ -164,7 +171,7 @@ async function textToVideo({ modelId, prompt, negPrompt, duration, ratio, cfg })
     body = {
       prompt,
       negative_prompt: negPrompt || '',
-      duration:        parseInt(dur),   // integer
+      duration:        clampDurStr(duration, m.maxDur), // string '3'-'15'
       aspect_ratio:    ratio || '16:9',
       cfg_scale:       parseFloat(cfg) || 0.5,
       generate_audio:  false,
@@ -173,7 +180,7 @@ async function textToVideo({ modelId, prompt, negPrompt, duration, ratio, cfg })
     body = {
       prompt,
       negative_prompt: negPrompt || '',
-      duration:        parseInt(dur),   // integer
+      duration:        clampDur(duration, m.maxDur),    // integer
       aspect_ratio:    KLING26_RATIO[ratio] || 'widescreen_16_9',
       cfg_scale:       parseFloat(cfg) || 0.5,
     };
@@ -181,7 +188,7 @@ async function textToVideo({ modelId, prompt, negPrompt, duration, ratio, cfg })
     body = {
       prompt,
       negative_prompt:         negPrompt || '',
-      duration:                parseInt(dur),
+      duration:                clampDur(duration, m.maxDur),
       enable_prompt_expansion: true,
     };
   } else if (m.provider === 'hailuo') {
@@ -194,7 +201,7 @@ async function textToVideo({ modelId, prompt, negPrompt, duration, ratio, cfg })
     body = {
       prompt,
       negative_prompt: negPrompt || '',
-      duration:        parseInt(dur),
+      duration:        clampDur(duration, m.maxDur),
     };
   }
 
@@ -220,10 +227,10 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
   let body;
   if (m.provider === 'kling3') {
     body = {
-      image_url:       imageData,        // field yang benar untuk Magnific Kling 3
+      image_url:       imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        parseInt(dur),
+      duration:        clampDurStr(duration, m.maxDur), // string '3'-'15'
       aspect_ratio:    ratio || '16:9',
       cfg_scale:       parseFloat(cfg) || 0.5,
       generate_audio:  false,
@@ -233,7 +240,7 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       image:           imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        parseInt(dur),
+      duration:        clampDur(duration, m.maxDur),
       aspect_ratio:    KLING26_RATIO[ratio] || 'widescreen_16_9',
       cfg_scale:       parseFloat(cfg) || 0.5,
     };
@@ -242,7 +249,7 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       prompt:                  prompt || '',
       image:                   imageData,
       negative_prompt:         negPrompt || '',
-      duration:                parseInt(dur),
+      duration:                clampDur(duration, m.maxDur),
       enable_prompt_expansion: true,
     };
   } else if (m.provider === 'wan26') {
@@ -254,7 +261,7 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       prompt:                  prompt || '',
       image:                   imageData,
       negative_prompt:         negPrompt || '',
-      duration:                parseInt(dur),
+      duration:                clampDur(duration, m.maxDur),
       size:                    WAN26_SIZE[ratio] || '1920*1080',
       enable_prompt_expansion: false,
       shot_type:               'single',
@@ -271,7 +278,7 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       image:           imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        parseInt(dur),
+      duration:        clampDur(duration, m.maxDur),
       aspect_ratio:    ratio || '16:9',
     };
   } else {
@@ -280,7 +287,7 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       image:           imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        parseInt(dur),
+      duration:        clampDur(duration, m.maxDur),
       cfg_scale:       parseFloat(cfg) || 0.5,
     };
   }
