@@ -318,7 +318,7 @@ function renderGenerate(el) {
     <div class="card-title"><span>✍️</span> Prompt</div>
     <div class="inp-group">
       <textarea id="prompt" class="ta" rows="3" placeholder="Deskripsikan video kamu…&#10;Contoh: A cinematic ocean wave at golden hour, slow motion, 4K">${''}</textarea>
-      <div class="char-hint"><span id="promptLen">0</span>/500</div>
+      <div class="char-hint"><span id="promptLen">0</span>/2500 kata</div>
     </div>
     <div class="inp-group">
       <label class="inp-label">Negative Prompt <span style="color:var(--t3);font-weight:400;text-transform:none">(opsional)</span></label>
@@ -376,7 +376,12 @@ function renderGenerate(el) {
   <div class="task-list" id="genTasks"></div>`;
 
   // Re-attach events
-  $('prompt')?.addEventListener('input', () => $('promptLen').textContent = $('prompt').value.length);
+  $('prompt')?.addEventListener('input', () => {
+    const words = $('prompt').value.trim().split(/\s+/).filter(w => w.length > 0);
+    const count = $('prompt').value.trim() === '' ? 0 : words.length;
+    $('promptLen').textContent = count;
+    $('promptLen').style.color = count > 2500 ? 'var(--red)' : '';
+  });
   setupDrop('imgDrop', f => { S.imgFile=f; renderGenerate(el); });
   if (S.batchOn) renderBatchPrompts();
   renderTaskList('genTasks');
@@ -494,6 +499,8 @@ async function doGenerate() {
   if (S.batchOn) return _batchGen();
   const prompt = $('prompt')?.value.trim();
   if (!prompt) return toast('Isi prompt dulu','error');
+  const wordCount = prompt.split(/\s+/).filter(w => w.length > 0).length;
+  if (wordCount > 2500) return toast(`Prompt terlalu panjang (${wordCount} kata, max 2500)`,'error');
   if (!S.model) return toast('Pilih model dulu','error');
   if (!(await hasKeys())) return;
   const btn=$('genBtn'); btn.disabled=true; $('genTxt').textContent='Queuing…';
