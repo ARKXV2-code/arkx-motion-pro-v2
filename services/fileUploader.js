@@ -8,8 +8,12 @@ const axios    = require('axios');
 const FormData = require('form-data');
 const log      = require('./logger');
 
-const IMGBB_KEY  = process.env.IMGBB_API_KEY || '3fc18340c0464bc6b1dc3c6556ddebe1';
 const MAX_BASE64 = 5 * 1024 * 1024; // 5MB
+
+// ImgBB key selalu ambil dari env saat dipakai (bukan saat load)
+function getImgbbKey() {
+  return process.env.IMGBB_API_KEY || '3fc18340c0464bc6b1dc3c6556ddebe1';
+}
 
 // ── Public API ────────────────────────────────────────────────
 
@@ -50,18 +54,20 @@ async function uploadToUrl(buffer, filename, mimetype) {
 
 /** ImgBB — primary untuk image */
 async function _imgbb(buffer, filename, mimetype) {
+  const key = getImgbbKey();
+  if (!key) throw new Error('ImgBB API key tidak ada');
   const form = new FormData();
   form.append('image', buffer.toString('base64'));
-  form.append('name', filename.replace(/\.[^.]+$/, '')); // nama tanpa ekstensi
+  form.append('name', filename.replace(/\.[^.]+$/, ''));
 
   const res = await axios.post(
-    `https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,
+    `https://api.imgbb.com/1/upload?key=${key}`,
     form,
     { headers: form.getHeaders(), timeout: 30_000 }
   );
 
   const url = res.data?.data?.url;
-  if (!url) throw new Error('No URL in ImgBB response');
+  if (!url) throw new Error('No URL in ImgBB response: ' + JSON.stringify(res.data).slice(0,100));
   return url;
 }
 

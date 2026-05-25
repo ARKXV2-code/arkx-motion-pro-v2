@@ -161,41 +161,41 @@ async function textToVideo({ modelId, prompt, negPrompt, duration, ratio, cfg })
 
   let body;
   if (m.provider === 'kling3') {
-    // Kling 3: aspect_ratio format normal, durasi 3-15s
     body = {
       prompt,
       negative_prompt: negPrompt || '',
-      duration:        dur,
+      duration:        parseInt(dur),   // integer
       aspect_ratio:    ratio || '16:9',
       cfg_scale:       parseFloat(cfg) || 0.5,
       generate_audio:  false,
     };
   } else if (m.provider === 'kling26') {
-    // Kling 2.6 Pro: aspect_ratio format berbeda, tidak ada field image untuk T2V
     body = {
       prompt,
       negative_prompt: negPrompt || '',
-      duration:        dur,
+      duration:        parseInt(dur),   // integer
       aspect_ratio:    KLING26_RATIO[ratio] || 'widescreen_16_9',
       cfg_scale:       parseFloat(cfg) || 0.5,
     };
   } else if (m.provider === 'wan') {
     body = {
       prompt,
-      negative_prompt:          negPrompt || '',
-      duration:                 dur,
-      aspect_ratio:             ratio || '16:9',
-      enable_prompt_expansion:  true,
+      negative_prompt:         negPrompt || '',
+      duration:                parseInt(dur),
+      enable_prompt_expansion: true,
     };
   } else if (m.provider === 'hailuo') {
-    // MiniMax Hailuo 02 T2V — durasi fixed 6
     body = {
       prompt,
       duration:         6,
       prompt_optimizer: true,
     };
   } else {
-    body = { prompt, negative_prompt: negPrompt || '', duration: dur };
+    body = {
+      prompt,
+      negative_prompt: negPrompt || '',
+      duration:        parseInt(dur),
+    };
   }
 
   const res = await call(`/v1/ai/${m.ep_submit}`, 'POST', body);
@@ -210,39 +210,41 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
   log.info(`🖼️ I2V: ${modelId} | ${dur}s | ${ratio}`);
   const ep = m.ep_submit_i2v || m.ep_submit;
 
+  // Pastikan tidak ada base64 untuk provider yang butuh URL
+  const needsUrl = ['kling3','kling26','wan','wan26','hailuo','seedance'];
+  if (needsUrl.includes(m.provider) && imageData.startsWith('data:')) {
+    throw new Error(`${m.provider} membutuhkan URL publik, bukan base64.`);
+  }
+
   let body;
   if (m.provider === 'kling3') {
-    if (imageData.startsWith('data:')) throw new Error('Kling 3 I2V membutuhkan URL publik.');
     body = {
       start_image_url: imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        dur,
+      duration:        parseInt(dur),
       aspect_ratio:    ratio || '16:9',
       cfg_scale:       parseFloat(cfg) || 0.5,
       generate_audio:  false,
     };
   } else if (m.provider === 'kling26') {
-    if (imageData.startsWith('data:')) throw new Error('Kling 2.6 I2V membutuhkan URL publik.');
     body = {
       image:           imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        dur,
+      duration:        parseInt(dur),
       aspect_ratio:    KLING26_RATIO[ratio] || 'widescreen_16_9',
       cfg_scale:       parseFloat(cfg) || 0.5,
     };
   } else if (m.provider === 'wan') {
-    if (imageData.startsWith('data:')) throw new Error('WAN I2V membutuhkan URL publik.');
     body = {
-      prompt:                   prompt || '',
-      image:                    imageData,
-      negative_prompt:          negPrompt || '',
-      duration:                 dur,
-      enable_prompt_expansion:  true,
+      prompt:                  prompt || '',
+      image:                   imageData,
+      negative_prompt:         negPrompt || '',
+      duration:                parseInt(dur),
+      enable_prompt_expansion: true,
     };
   } else if (m.provider === 'wan26') {
-    if (imageData.startsWith('data:')) throw new Error('WAN 2.6 membutuhkan URL publik.');
     const WAN26_SIZE = {
       '16:9': '1920*1080', '9:16': '1080*1920', '1:1': '1440*1440',
       '4:3':  '1632*1248', '3:4':  '1248*1632',
@@ -251,13 +253,12 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       prompt:                  prompt || '',
       image:                   imageData,
       negative_prompt:         negPrompt || '',
-      duration:                dur,
+      duration:                parseInt(dur),
       size:                    WAN26_SIZE[ratio] || '1920*1080',
       enable_prompt_expansion: false,
       shot_type:               'single',
     };
   } else if (m.provider === 'hailuo') {
-    if (imageData.startsWith('data:')) throw new Error('Hailuo membutuhkan URL publik.');
     body = {
       prompt:            prompt || '',
       first_frame_image: imageData,
@@ -265,12 +266,11 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       prompt_optimizer:  true,
     };
   } else if (m.provider === 'seedance') {
-    if (imageData.startsWith('data:')) throw new Error('Seedance membutuhkan URL publik.');
     body = {
       image:           imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        dur,
+      duration:        parseInt(dur),
       aspect_ratio:    ratio || '16:9',
     };
   } else {
@@ -279,7 +279,7 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       image:           imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        dur,
+      duration:        parseInt(dur),
       cfg_scale:       parseFloat(cfg) || 0.5,
     };
   }
@@ -301,7 +301,7 @@ async function motionControl({ modelId, imageData, videoData, prompt, duration, 
   const body = {
     image_url:             imageData,
     prompt:                prompt || '',
-    duration:              String(dur),
+    duration:              dur,                          // integer
     cfg_scale:             parseFloat(strength) || 0.5,
     character_orientation: 'video',
   };

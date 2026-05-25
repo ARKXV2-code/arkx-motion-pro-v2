@@ -44,30 +44,29 @@ router.post('/i2v', upload.single('image'), async (req, res) => {
   try {
     const { modelId, prompt, negPrompt, duration, ratio, cfg, imageUrl } = req.body;
     if (!modelId) return res.status(400).json({ ok:false, error:'modelId required' });
+    if (!prompt)  return res.status(400).json({ ok:false, error:'prompt required' });
 
     const modelCfg = mag.MODELS[modelId];
     if (!modelCfg) return res.status(400).json({ ok:false, error:`Model tidak dikenal: ${modelId}` });
     if (!modelCfg.i2v) return res.status(400).json({ ok:false, error:`${modelId} tidak support image-to-video` });
+    if (!req.file && !imageUrl) return res.status(400).json({ ok:false, error:'image required' });
 
+    // Upload image SEBELUM masuk queue — error langsung balik ke user
     let imageData = imageUrl || null;
     if (req.file) {
       validate(req.file, IMAGE_TYPES);
-      // Provider yang butuh URL publik (bukan base64)
       const needsUrl = ['kling3', 'kling26', 'wan', 'wan26', 'hailuo', 'seedance'];
-      if (needsUrl.includes(modelCfg.provider)) {
-        imageData = await uploadToUrl(req.file.buffer, req.file.originalname || 'image.jpg', req.file.mimetype);
-      } else {
-        imageData = await uploadToTemp(req.file.buffer, req.file.originalname || 'image.jpg', req.file.mimetype);
-      }
+      imageData = needsUrl.includes(modelCfg.provider)
+        ? await uploadToUrl(req.file.buffer, req.file.originalname || 'image.jpg', req.file.mimetype)
+        : await uploadToTemp(req.file.buffer, req.file.originalname || 'image.jpg', req.file.mimetype);
     }
-    if (!imageData) return res.status(400).json({ ok:false, error:'image required' });
 
-    const { id: qId, promise } = queue.add(async () => {
+    const { id: qId } = queue.add(async () => {
       const { taskId, ep_poll } = await mag.imageToVideo({ modelId, imageData, prompt, negPrompt, duration, ratio, cfg });
       await history.save({ type:'i2v', model:modelId, prompt, taskId, ep_poll, status:'processing', params:{ duration, ratio } });
       _waitAndFinish(taskId, ep_poll, modelId, { duration, ratio }, qId);
       return { taskId };
-    }, { type:'i2v', model:modelId });
+    }, { type:'i2v', model:modelId, prompt: (prompt||'').slice(0,50) });
 
     res.json({ ok:true, queueId: qId });
   } catch (e) { res.status(500).json({ ok:false, error:e.message }); }

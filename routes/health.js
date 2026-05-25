@@ -15,21 +15,32 @@ router.get('/', (_, res) => {
   });
 });
 
-// Test koneksi ke Magnific (tanpa API key)
+// Test koneksi ke Magnific (via CF Worker kalau ada)
 router.get('/magnific', async (_, res) => {
   const axios = require('axios');
   const t0 = Date.now();
+
+  const workerUrl    = (process.env.CF_WORKER_URL || '').replace(/\/$/, '');
+  const workerSecret = process.env.CF_WORKER_SECRET || '';
+  const useWorker    = !!workerUrl;
+
+  const targetUrl = useWorker
+    ? `${workerUrl}/proxy/v1/ai/image-to-video/kling-v2-6`
+    : 'https://api.magnific.com/v1/ai/image-to-video/kling-v2-6';
+
+  const headers = {
+    'x-magnific-api-key': 'health_check_probe',
+    'Accept': 'application/json',
+  };
+  if (useWorker && workerSecret) headers['x-arkx-secret'] = workerSecret;
+
   try {
-    const r = await axios.get('https://api.magnific.com/v1/ai/image-to-video/kling-v2-6', {
-      headers: {
-        'x-magnific-api-key': 'health_check_probe',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json',
-      },
+    const r = await axios.get(targetUrl, {
+      headers,
       timeout: 10000,
       validateStatus: () => true,
     });
-    const ms = Date.now() - t0;
+    const ms  = Date.now() - t0;
     const msg = r.data?.message || r.data?.error || '';
     const ipBlocked = r.status === 403 && (
       msg.toLowerCase().includes('ip') ||
@@ -38,21 +49,27 @@ router.get('/magnific', async (_, res) => {
     );
 
     res.json({
-      ok: !ipBlocked,
-      status: r.status,
-      latency: ms,
+      ok:        !ipBlocked,
+      status:    r.status,
+      latency:   ms,
       reachable: true,
       ipBlocked,
-      message: ipBlocked ? '⛔ IP diblokir Magnific' : '✅ IP OK — Magnific dapat diakses',
+      via:       useWorker ? `CF Worker (${workerUrl})` : 'Direct',
+      message:   ipBlocked
+        ? '⛔ IP diblokir Magnific! Pastikan CF Worker aktif.'
+        : useWorker
+          ? `✅ OK via CF Worker (${ms}ms)`
+          : `✅ Direct OK (${ms}ms)`,
       detail: msg.slice(0, 100),
     });
   } catch(e) {
     res.json({
-      ok: false,
+      ok:        false,
       reachable: false,
-      latency: Date.now() - t0,
+      latency:   Date.now() - t0,
       ipBlocked: false,
-      message: '❌ Tidak bisa reach Magnific: ' + e.message,
+      via:       useWorker ? 'CF Worker' : 'Direct',
+      message:   '❌ Tidak bisa reach: ' + e.message,
     });
   }
 });
