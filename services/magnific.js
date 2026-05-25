@@ -207,8 +207,8 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
   log.info(`🖼️ I2V: ${modelId} | ${duration}s | ${ratio}`);
   const ep = m.ep_submit;
 
-  // Semua provider kecuali kling21/kling25 butuh URL publik
-  const needsUrl = ['kling3','kling26','wan','wan26','hailuo','kling21'];
+  // Semua provider butuh URL publik
+  const needsUrl = ['kling3','kling26','kling25','kling21','wan','wan26','hailuo'];
   if (needsUrl.includes(m.provider) && imageData.startsWith('data:')) {
     throw new Error(`${m.provider} membutuhkan URL publik, bukan base64.`);
   }
