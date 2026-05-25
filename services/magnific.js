@@ -331,14 +331,29 @@ async function pollTask(taskId, epPoll) {
 // ── Wait for completion ───────────────────────────────────────
 async function waitDone(taskId, epPoll, queueId, onProgress) {
   const MAX = 240; // 240 × 5s = 20 menit
+  let consecutiveBlocks = 0;
+
   for (let i = 0; i < MAX; i++) {
     await sleep(5000);
-    const s = await pollTask(taskId, epPoll);
-    if (onProgress) onProgress(s);
-    _broadcast({ type: 'progress', taskId, queueId, ...s });
-    log.info(`📊 ${taskId.slice(0,8)}: ${s.status} ${Math.round((s.progress||0)*100)}%`);
-    if (['COMPLETED','completed','succeed','success','DONE'].includes(s.status)) return s;
-    if (['FAILED','failed','error','ERROR','CANCELLED'].includes(s.status)) throw new Error(s.error || 'Task failed');
+    try {
+      const s = await pollTask(taskId, epPoll);
+      consecutiveBlocks = 0; // reset kalau berhasil
+      if (onProgress) onProgress(s);
+      _broadcast({ type: 'progress', taskId, queueId, ...s });
+      log.info(`📊 ${taskId.slice(0,8)}: ${s.status} ${Math.round((s.progress||0)*100)}%`);
+      if (['COMPLETED','completed','succeed','success','DONE'].includes(s.status)) return s;
+      if (['FAILED','failed','error','ERROR','CANCELLED'].includes(s.status)) throw new Error(s.error || 'Task failed');
+    } catch (err) {
+      // Kalau IP block saat polling — skip poll ini, coba lagi di iterasi berikutnya
+      if (err.message.includes('IP') || err.message.includes('block') || err.message.includes('suspicious') || err.message.includes('403')) {
+        consecutiveBlocks++;
+        log.warn(`⚠️ Poll blocked (${consecutiveBlocks}x), skip & retry in 10s…`);
+        if (consecutiveBlocks >= 12) throw new Error('Poll terus di-block setelah 12x. Task mungkin sudah selesai, cek History.');
+        await sleep(10000); // tunggu lebih lama sebelum retry
+        continue;
+      }
+      throw err;
+    }
   }
   throw new Error('Timeout 20 menit');
 }
