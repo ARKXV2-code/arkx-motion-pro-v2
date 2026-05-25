@@ -44,11 +44,19 @@ async function init() {
 
   pool.forEach(k => { if (!stats[k.id]) stats[k.id] = _blankStat(); });
 
-  // Auto revive dead keys setiap 1 jam (untuk 429 daily limit)
+  // Auto revive dead keys setiap 1 jam (untuk 429 daily limit dan IP block)
   setInterval(() => {
-    const dead = pool.filter(k => _status(k.id) === 'dead' && stats[k.id]?.deadReason?.includes('429'));
+    const dead = pool.filter(k => {
+      const reason = stats[k.id]?.deadReason || '';
+      return _status(k.id) === 'dead' && (
+        reason.includes('429') ||
+        reason.toLowerCase().includes('ip') ||
+        reason.toLowerCase().includes('block') ||
+        reason.toLowerCase().includes('suspicious')
+      );
+    });
     if (dead.length > 0) {
-      log.info(`🔄 Auto-reviving ${dead.length} daily-limit keys...`);
+      log.info(`🔄 Auto-reviving ${dead.length} keys (429/IP block)…`);
       dead.forEach(k => revive(k.id));
     }
   }, 60 * 60 * 1000);

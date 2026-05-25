@@ -79,15 +79,29 @@ async function call(endpoint, method = 'GET', body = null, extraHeaders = {}, at
     // ── 401 / 403 — key mati atau IP block ───────────────────
     if ([401, 403].includes(res.status)) {
       log.error(`❌ ${res.status} — ${msg}`);
+      const isIpBlock = msg.toLowerCase().includes('ip') ||
+                        msg.toLowerCase().includes('block') ||
+                        msg.toLowerCase().includes('suspicious');
+
+      if (isIpBlock) {
+        // IP block — jangan mark key dead, retry supaya CF Worker pakai edge node lain
+        log.warn(`⛔ IP block detected, retry via CF Worker (attempt ${attempt+1}/${MAX_RETRY})…`);
+        if (attempt < MAX_RETRY) {
+          await sleep(2000 * (attempt + 1)); // makin lama makin tunggu
+          return call(endpoint, method, body, extraHeaders, attempt + 1);
+        }
+        throw new Error(`⛔ IP diblokir Magnific setelah ${MAX_RETRY} retry. Coba ganti CF Worker.`);
+      }
+
+      // Key invalid/expired — mark dead dan coba key lain
       keys.record(keyObj.id, false, ms, `${res.status}: ${msg}`);
-      // Hanya mark dead kalau bukan IP block
-      const isIpBlock = msg.toLowerCase().includes('ip') || msg.toLowerCase().includes('block') || msg.toLowerCase().includes('suspicious');
-      if (!isIpBlock) keys.markDead(keyObj.id, `HTTP ${res.status}: ${msg}`);
+      keys.markDead(keyObj.id, `HTTP ${res.status}: ${msg}`);
       if (attempt < MAX_RETRY) {
+        log.info(`🔄 Key mati, coba key lain (attempt ${attempt+1}/${MAX_RETRY})`);
         await sleep(500);
         return call(endpoint, method, body, extraHeaders, attempt + 1);
       }
-      throw new Error(isIpBlock ? '⛔ IP diblokir Magnific. Pastikan CF Worker aktif.' : `Semua key mati (${res.status}). Tambah key baru.`);
+      throw new Error(`Semua key mati (${res.status}). Tambah key baru.`);
     }
 
     // ── 429 — quota habis ────────────────────────────────────
@@ -182,8 +196,13 @@ async function callForm(endpoint, formData, attempt = 0) {
     }
 
     keys.record(keyObj.id, false, ms, `${res.status}: ${msg}`);
-    if ([401, 403].includes(res.status)) keys.markDead(keyObj.id, `HTTP ${res.status}`);
+    const isIpBlock = msg.toLowerCase().includes('ip') || msg.toLowerCase().includes('block') || msg.toLowerCase().includes('suspicious');
+    if ([401, 403].includes(res.status) && !isIpBlock) keys.markDead(keyObj.id, `HTTP ${res.status}`);
     if (res.status === 429) keys.markDead(keyObj.id, '429 daily limit');
+    if (attempt < 3 && (isIpBlock || (res.status !== 429 && res.status !== 401 && res.status !== 403))) {
+      await sleep(2000 * (attempt + 1));
+      return callForm(endpoint, formData, attempt + 1);
+    }
     if (attempt < 3 && res.status !== 429) {
       await sleep(2000);
       return callForm(endpoint, formData, attempt + 1);
