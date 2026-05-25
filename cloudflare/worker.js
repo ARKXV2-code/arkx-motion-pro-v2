@@ -1,68 +1,79 @@
 /**
- * ARKX Motion Pro V2 — Cloudflare Worker Proxy
- * ─────────────────────────────────────────────
- * Semua request ke Magnific API diforward lewat sini.
- * IP yang terlihat oleh Magnific = IP Cloudflare edge (bersih).
+ * ARKX Motion Pro V2 — Cloudflare Worker Proxy v2
+ * ─────────────────────────────────────────────────
+ * Bypass Magnific IP block dengan:
+ * 1. Rotate User-Agent realistis
+ * 2. Spoof IP headers dengan residential IP ranges
+ * 3. Randomize request fingerprint
+ * 4. Strip semua Cloudflare headers
  *
- * CARA DEPLOY (2 menit):
- * 1. Buka https://dash.cloudflare.com → Workers & Pages → Create Worker
- * 2. Klik "Edit Code", paste seluruh isi file ini
- * 3. Klik "Save & Deploy"
- * 4. Copy URL worker (misal: https://arkx-proxy.namakamu.workers.dev)
- * 5. Set secret: Settings → Variables → Add variable
- *    Name: WORKER_SECRET  Value: (string random kuat, sama dengan di .env)
- * 6. Paste URL worker ke CF_WORKER_URL di file .env ARKX
- *
- * ATAU deploy via CLI:
- *   npm install -g wrangler
- *   wrangler login
- *   wrangler deploy cloudflare/worker.js --name arkx-proxy
- *   wrangler secret put WORKER_SECRET
+ * DEPLOY:
+ * 1. Cloudflare Dashboard → Workers & Pages → Create Worker
+ * 2. Edit Code → paste file ini → Save & Deploy
+ * 3. Settings → Variables → WORKER_SECRET = arkx_jagoan_2024_XyZ789
+ * 4. Copy URL → paste ke Settings app ARKX
  */
 
 const MAGNIFIC_BASE = 'https://api.magnific.com';
 
-// Pool user-agent realistis untuk rotasi
+// ── User Agent pool — browser terbaru ────────────────────────
 const USER_AGENTS = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Safari/605.1.15',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0',
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Mobile/15E148 Safari/604.1',
+  'Mozilla/5.0 (iPad; CPU OS 18_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Mobile/15E148 Safari/604.1',
 ];
 
-const HOP_BY_HOP = new Set([
+// ── Residential IP ranges (Asia, EU, US) ─────────────────────
+const IP_RANGES = [
+  // Indonesia Telkom
+  () => `114.${r(120,125)}.${r(0,255)}.${r(1,254)}`,
+  () => `180.${r(240,255)}.${r(0,255)}.${r(1,254)}`,
+  // Singapore
+  () => `103.${r(1,50)}.${r(0,255)}.${r(1,254)}`,
+  () => `175.${r(41,45)}.${r(0,255)}.${r(1,254)}`,
+  // US residential
+  () => `${r(68,72)}.${r(1,200)}.${r(0,255)}.${r(1,254)}`,
+  () => `${r(98,100)}.${r(1,200)}.${r(0,255)}.${r(1,254)}`,
+  // EU
+  () => `${r(77,80)}.${r(1,200)}.${r(0,255)}.${r(1,254)}`,
+  () => `${r(185,190)}.${r(1,200)}.${r(0,255)}.${r(1,254)}`,
+];
+
+// Headers yang harus dibuang (Cloudflare & hop-by-hop)
+const STRIP_HEADERS = new Set([
   'connection','keep-alive','transfer-encoding','te','trailers',
   'upgrade','proxy-authorization','proxy-connection',
   'x-forwarded-for','x-forwarded-proto','x-real-ip',
-  'cf-connecting-ip','cf-ipcountry','cf-ray','cf-visitor','cf-worker',
-  'x-arkx-secret','host'
+  'cf-connecting-ip','cf-ipcountry','cf-ray','cf-visitor',
+  'cf-worker','cf-ew-via','cdn-loop',
+  'x-arkx-secret','host',
 ]);
 
 export default {
   async fetch(request, env) {
-    // CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
 
     const url = new URL(request.url);
 
-    // Health check — tidak perlu auth
+    // Health check
     if (url.pathname === '/health' || url.pathname === '/') {
-      return json({ ok: true, service: 'ARKX-CF-Proxy', ts: Date.now() });
+      return json({ ok: true, service: 'ARKX-CF-Proxy-v2', ts: Date.now() });
     }
 
-    // ── Auth check ──────────────────────────────────────────
+    // Auth
     const secret = request.headers.get('x-arkx-secret');
-    const expectedSecret = env.WORKER_SECRET;
-    if (!expectedSecret || secret !== expectedSecret) {
+    if (!env.WORKER_SECRET || secret !== env.WORKER_SECRET) {
       return json({ error: 'Unauthorized' }, 401);
     }
 
-    // ── Route: /proxy/* → forward ke Magnific ───────────────
     if (url.pathname.startsWith('/proxy/')) {
       return handleProxy(request, url, env);
     }
@@ -71,41 +82,56 @@ export default {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
 async function handleProxy(request, url, env) {
-  // Strip /proxy prefix → path ke Magnific
   const targetPath = url.pathname.slice('/proxy'.length);
   const targetUrl  = `${MAGNIFIC_BASE}${targetPath}${url.search}`;
 
-  // Build forward headers
+  const ua      = pick(USER_AGENTS);
+  const fakeIP  = pick(IP_RANGES)();
+  const isChrome = ua.includes('Chrome') && !ua.includes('Edg');
+  const isSafari = ua.includes('Safari') && !ua.includes('Chrome');
+
+  // Build clean headers
   const fwd = new Headers();
+
+  // Forward hanya header yang aman
   for (const [k, v] of request.headers.entries()) {
-    if (!HOP_BY_HOP.has(k.toLowerCase())) fwd.set(k, v);
+    if (!STRIP_HEADERS.has(k.toLowerCase())) {
+      fwd.set(k, v);
+    }
   }
 
-  // Inject browser-like headers
-  fwd.set('user-agent',       pickRandom(USER_AGENTS));
+  // Override dengan browser fingerprint
+  fwd.set('host',             'api.magnific.com');
+  fwd.set('user-agent',       ua);
   fwd.set('accept',           'application/json, text/plain, */*');
-  fwd.set('accept-language',  'en-US,en;q=0.9');
-  fwd.set('accept-encoding',  'gzip, deflate, br');
-  fwd.set('origin',            'https://www.magnific.com');
-  fwd.set('referer',           'https://www.magnific.com/');
-  fwd.set('sec-fetch-dest',    'empty');
-  fwd.set('sec-fetch-mode',    'cors');
-  fwd.set('sec-fetch-site',    'same-site');
-  fwd.set('sec-ch-ua',         '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"');
-  fwd.set('sec-ch-ua-mobile',  '?0');
-  fwd.set('sec-ch-ua-platform','"Windows"');
-  fwd.set('host',              'api.magnific.com');
-  // Spoof IP untuk bypass IP block
-  fwd.set('x-forwarded-for',  randomIP());
-  fwd.set('x-real-ip',        randomIP());
-  fwd.set('cf-connecting-ip', randomIP());
+  fwd.set('accept-language',  pick(['en-US,en;q=0.9', 'en-GB,en;q=0.9,id;q=0.8', 'id-ID,id;q=0.9,en;q=0.8']));
+  fwd.set('accept-encoding',  'gzip, deflate, br, zstd');
+  fwd.set('origin',           'https://www.magnific.com');
+  fwd.set('referer',          'https://www.magnific.com/');
 
-  // Body — stream langsung, jangan buffer semua sekaligus
+  // Spoof IP
+  fwd.set('x-forwarded-for',  `${fakeIP}, ${pick(IP_RANGES)()}`);
+  fwd.set('x-real-ip',        fakeIP);
+  fwd.set('true-client-ip',   fakeIP);
+
+  // Browser-specific headers
+  if (isChrome) {
+    const ver = ua.match(/Chrome\/(\d+)/)?.[1] || '136';
+    fwd.set('sec-ch-ua',          `"Chromium";v="${ver}", "Google Chrome";v="${ver}", "Not-A.Brand";v="99"`);
+    fwd.set('sec-ch-ua-mobile',   '?0');
+    fwd.set('sec-ch-ua-platform', pick(['"Windows"', '"macOS"', '"Linux"']));
+    fwd.set('sec-fetch-dest',     'empty');
+    fwd.set('sec-fetch-mode',     'cors');
+    fwd.set('sec-fetch-site',     'same-site');
+  }
+
+  // Random request ID untuk tiap request
+  fwd.set('x-request-id', crypto.randomUUID());
+
   let body = undefined;
   if (['POST','PUT','PATCH'].includes(request.method)) {
-    body = request.body; // stream, bukan arrayBuffer
+    body = request.body;
   }
 
   let upstream;
@@ -120,11 +146,10 @@ async function handleProxy(request, url, env) {
     return json({ error: 'Upstream unreachable', detail: err.message }, 502);
   }
 
-  // Forward response
   const respHeaders = new Headers(corsHeaders());
   const ct = upstream.headers.get('content-type');
   if (ct) respHeaders.set('content-type', ct);
-  respHeaders.set('x-proxied-by',    'ARKX-CF-Worker');
+  respHeaders.set('x-proxied-by',      'ARKX-CF-v2');
   respHeaders.set('x-upstream-status', String(upstream.status));
 
   return new Response(upstream.body, {
@@ -133,7 +158,6 @@ async function handleProxy(request, url, env) {
   });
 }
 
-// ─────────────────────────────────────────────────────────────
 function corsHeaders() {
   return {
     'access-control-allow-origin':  '*',
@@ -150,18 +174,8 @@ function json(data, status = 200) {
   });
 }
 
-function pickRandom(arr) {
+function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
-}
-
-// Generate random residential IP untuk bypass IP block
-function randomIP() {
-  const ranges = [
-    () => `${r(1,223)}.${r(0,255)}.${r(0,255)}.${r(1,254)}`,
-    () => `${r(100,199)}.${r(0,255)}.${r(0,255)}.${r(1,254)}`,
-    () => `${r(50,100)}.${r(100,200)}.${r(0,255)}.${r(1,254)}`,
-  ];
-  return pickRandom(ranges)();
 }
 
 function r(min, max) {
