@@ -62,13 +62,6 @@ const MODELS = {
     ep_submit: 'image-to-video/kling-v2-6-pro',
     ep_poll:   'image-to-video/kling-v2-6',
   },
-  // ❓ Kling 2.5 Pro — I2V only (belum ditest)
-  'kling-2.5-pro': {
-    provider: 'kling25', mode: 'pro', maxDur: 10,
-    t2v: false, i2v: true, motion: false,
-    ep_submit: 'image-to-video/kling-v2-5-pro',
-    ep_poll:   'image-to-video/kling-v2-5-pro',
-  },
   // ✅ Motion Control 2.6
   'kling-motion-2.6-std': {
     provider: 'motion', mode: 'std', maxDur: 10,
@@ -108,7 +101,6 @@ const MODELS = {
 const LABELS = {
   'kling-3-pro':          'Kling 3 Pro',
   'kling-2.6-pro':        'Kling 2.6 Pro',
-  'kling-2.5-pro':        'Kling 2.5 Pro',
   'kling-motion-2.6-std': 'Kling Motion 2.6 Std',
   'kling-motion-2.6-pro': 'Kling Motion 2.6 Pro',
   'wan-t2v':              'WAN 2.5 Text→Video',
