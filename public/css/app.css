@@ -947,12 +947,14 @@ input:checked + .toggle-slider::before{transform:translateX(21px);background:#ff
 .batch-file-btn:hover{border-color:rgba(124,111,255,.35);color:var(--p2)}
 
 /* ── Video Modal ── */
-.vmodal-overlay{
+.vmodal-overlay,
+.modal{
   position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;
   display:flex;align-items:center;justify-content:center;
   padding:20px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
 }
-.vmodal{
+.vmodal,
+.modal-content{
   background:rgba(8,8,20,.97);
   border:1px solid var(--b2);border-radius:24px;
   width:100%;max-width:520px;overflow:hidden;
@@ -972,8 +974,10 @@ input:checked + .toggle-slider::before{transform:translateX(21px);background:#ff
   display:flex;align-items:center;justify-content:center;
 }
 .vmodal-close:hover{color:var(--red);background:rgba(255,51,85,.12);border-color:rgba(255,51,85,.3)}
-.vmodal-vid{width:100%;max-height:380px;background:#000;display:block}
-.vmodal-actions{display:flex;gap:10px;padding:20px 24px}
+.vmodal-vid,
+.modal-vid{width:100%;max-height:380px;background:#000;display:block;object-fit:contain}
+.vmodal-actions,
+.modal-actions{display:flex;gap:10px;padding:20px 24px;flex-wrap:wrap}
 
 /* ── Toast ── */
 .toast{
@@ -1104,9 +1108,11 @@ code{
   .btn-sm{font-size:11px;padding:5px 10px}
 
   /* Modal */
-  .vmodal{border-radius:20px}
-  .vmodal-hdr{padding:16px 18px}
-  .vmodal-actions{padding:14px 18px;gap:8px}
+  .vmodal,.modal-content{border-radius:16px;max-width:100%;margin:0 8px}
+  .vmodal-hdr{padding:14px 16px}
+  .vmodal-actions,.modal-actions{padding:12px 16px;gap:8px}
+  .vmodal-vid,.modal-vid{max-height:55vw;min-height:180px}
+  .modal{padding:12px}
 
   /* Toast above bottom tabs */
   .toast{bottom:72px;font-size:12px;padding:11px 20px;border-radius:14px}
