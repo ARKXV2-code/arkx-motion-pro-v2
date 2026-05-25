@@ -199,6 +199,7 @@ async function textToVideo({ modelId, prompt, negPrompt, duration, ratio, cfg })
   }
 
   const res = await call(`/v1/ai/${m.ep_submit}`, 'POST', body);
+  log.info(`📦 T2V body: ${JSON.stringify(body).slice(0, 200)}`);
   return { taskId: _taskId(res), ep_poll: m.ep_poll };
 }
 
@@ -219,7 +220,7 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
   let body;
   if (m.provider === 'kling3') {
     body = {
-      start_image_url: imageData,
+      image_url:       imageData,        // field yang benar untuk Magnific Kling 3
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
       duration:        parseInt(dur),
@@ -285,6 +286,7 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
   }
 
   const res = await call(`/v1/ai/${ep}`, 'POST', body);
+  log.info(`📦 I2V body: ${JSON.stringify(body).slice(0, 200)}`);
   return { taskId: _taskId(res), ep_poll: m.ep_poll };
 }
 
