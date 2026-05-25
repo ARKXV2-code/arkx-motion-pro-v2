@@ -125,13 +125,6 @@ const MODELS = {
     ep_submit: 'image-to-video/minimax-hailuo-02-1080p',
     ep_poll:   'image-to-video/minimax-hailuo-02-1080p',
   },
-  // ── Kling 2.1 Master — I2V, verified changelog Jun 2025 ──
-  'kling-2.1-master': {
-    provider: 'kling21', mode: 'master', maxDur: 10,
-    t2v: false, i2v: true, motion: false,
-    ep_submit: 'image-to-video/kling-v2-1-master',
-    ep_poll:   'image-to-video/kling-v2-1',
-  },
 };
 
 const LABELS = {
@@ -148,7 +141,6 @@ const LABELS = {
   'wan-i2v':              'WAN 2.5 Image→Video',
   'wan-2.6-i2v':          'WAN 2.6 Image→Video',
   'hailuo-02':            'MiniMax Hailuo 02',
-  'kling-2.1-master':     'Kling 2.1 Master',
 };
 
 // ── Text to Video ─────────────────────────────────────────────
