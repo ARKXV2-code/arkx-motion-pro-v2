@@ -55,6 +55,7 @@ async function call(endpoint, method = 'GET', body = null, extraHeaders = {}, at
   const via     = getWorkerUrl() ? '→ CF Worker' : '→ Direct';
 
   log.info(`📡 [${attempt > 0 ? `retry#${attempt}` : 'req'}] ${method} ${endpoint} [key:${keyObj.id.slice(0,8)}…] ${via}`);
+  if (body && method === 'POST') log.info(`📦 body: ${JSON.stringify(body).slice(0, 300)}`);
 
   try {
     const res = await axios({
@@ -107,6 +108,14 @@ async function call(endpoint, method = 'GET', body = null, extraHeaders = {}, at
       log.error(`❌ 404 — ${msg} [${endpoint}]`);
       keys.record(keyObj.id, false, ms, `404: ${msg}`);
       throw new Error(`404: ${msg}`);
+    }
+
+    // ── 400 — Validation error — log full response ────────────
+    if (res.status === 400) {
+      const detail = JSON.stringify(res.data).slice(0, 500);
+      log.error(`❌ 400 Validation — ${detail}`);
+      keys.record(keyObj.id, false, ms, `400: ${msg}`);
+      throw new Error(`400 Validation: ${detail}`);
     }
 
     // ── 5xx — server error, retry ────────────────────────────
