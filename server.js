@@ -55,9 +55,9 @@ app.post('/webhook/telegram', (req, res) => {
 
 // SPA fallback — landing di root, app di /app
 app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
-app.get('/app', (_, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-app.get('/app/*', (_, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-app.get('*', (_, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/app', (_, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
+app.get('/app/*', (_, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
+app.get('*', (_, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
 
 // ── Error handler ─────────────────────────────────────────────
 app.use((err, req, res, next) => {

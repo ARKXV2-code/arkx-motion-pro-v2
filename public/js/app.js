@@ -32,28 +32,11 @@ window.addEventListener('DOMContentLoaded', () => {
         const r = await api('/api/auth/me');
         if (r.ok) {
           S.user = r.user;
-          $('authPage').classList.add('hidden');
           await enterApp();
           return;
         }
       } catch {}
       localStorage.removeItem('arkx_token');
-    }
-    // Cek apakah ada hash #dashboard (dari redirect setelah login)
-    if (window.location.hash === '#dashboard') {
-      const token = localStorage.getItem('arkx_token');
-      if (token) {
-        S.token = token;
-        try {
-          const r = await api('/api/auth/me');
-          if (r.ok) {
-            S.user = r.user;
-            $('authPage').classList.add('hidden');
-            await enterApp();
-            return;
-          }
-        } catch {}
-      }
     }
     showAuth();
   });
@@ -92,13 +75,20 @@ async function doLogin() {
   try {
     const r = await api('/api/auth/login','POST',{email,password:pass});
     if (r.ok) {
-      S.user = r.user; S.token = r.token;
+      S.user = r.user;
+      S.token = r.token;
       localStorage.setItem('arkx_token', r.token);
-      // Redirect ke /app dengan hash untuk trigger app load
-      window.location.href = '/app#dashboard';
-    } else showAuthError('loginError', r.error||'Login gagal');
+      // Langsung masuk app tanpa redirect
+      const authPage = $('authPage');
+      const mainApp  = $('mainApp');
+      if (authPage) authPage.style.display = 'none';
+      if (mainApp)  mainApp.style.display  = 'flex';
+      await enterApp();
+    } else {
+      showAuthError('loginError', r.error||'Login gagal');
+    }
   } catch(e) {
-    showAuthError('loginError', e.message);
+    showAuthError('loginError', 'Error: ' + e.message);
   }
   finally { setAuthLoading('loginBtn','loginBtnTxt',false,'Login'); }
 }
@@ -136,17 +126,21 @@ function doLogout() {
 
 // ── ENTER APP ─────────────────────────────────────────────────
 async function enterApp() {
-  const mainApp = $('mainApp');
-  if (!mainApp) throw new Error('mainApp element not found');
-  mainApp.classList.remove('hidden');
+  // Sembunyikan auth, tampilkan app
+  const authPage = $('authPage');
+  const mainApp  = $('mainApp');
+  if (authPage) { authPage.style.display = 'none'; authPage.classList.add('hidden'); }
+  if (mainApp)  { mainApp.style.display  = 'flex'; mainApp.classList.remove('hidden'); }
 
-  // Set user info — safe access
-  const nameEl = $('sbUname'), roleEl = $('sbUrole'), avatarEl = $('sbAvatar');
+  // Set user info
+  const nameEl   = $('sbUname');
+  const roleEl   = $('sbUrole');
+  const avatarEl = $('sbAvatar');
   if (nameEl)   nameEl.textContent   = S.user?.name || 'User';
   if (roleEl)   roleEl.textContent   = S.user?.plan === 'pro' ? '⭐ Pro' : S.user?.plan === 'enterprise' ? '👑 Enterprise' : S.user?.role || 'user';
   if (avatarEl) avatarEl.textContent = (S.user?.name || 'U')[0].toUpperCase();
 
-  // Show admin menu if admin
+  // Show admin menu
   if (S.user?.role === 'admin') {
     document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
   }

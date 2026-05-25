@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#050508">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>ARKX Motion Pro V2 — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+
+<!-- ══ SPLASH ══ -->
+<div class="splash" id="splash">
+  <div class="splash-content">
+    <div class="splash-logo">
+      <div class="logo-hex">
+        <div class="hex-ring h1"></div>
+        <div class="hex-ring h2"></div>
+        <div class="hex-ring h3"></div>
+        <span class="hex-icon">⚡</span>
+      </div>
+    </div>
+    <div class="splash-title">ARKX Motion Pro</div>
+    <div class="splash-version">V2 · AI Video Generation</div>
+    <div class="splash-loader">
+      <div class="loader-track"><div class="loader-fill" id="loaderFill"></div></div>
+      <div class="loader-text" id="loaderText">Initializing…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ AUTH PAGE ══ -->
+<div class="auth-page hidden" id="authPage">
+  <div class="auth-bg">
+    <div class="auth-orb o1"></div>
+    <div class="auth-orb o2"></div>
+    <div class="auth-orb o3"></div>
+  </div>
+  <div class="auth-container">
+    <div class="auth-brand">
+      <span class="brand-icon">⚡</span>
+      <div class="brand-name">ARKX Motion Pro</div>
+      <div class="brand-tag">AI Video Generation Platform</div>
+    </div>
+
+    <!-- Login Form -->
+    <div class="auth-card" id="loginForm">
+      <div class="auth-card-title">Selamat Datang</div>
+      <div class="auth-card-sub">Masuk ke akun kamu untuk mulai generate video AI</div>
+      <div class="auth-error hidden" id="loginError"></div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input class="auth-input" id="loginEmail" type="email" placeholder="email@kamu.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <div class="pass-wrap">
+          <input class="auth-input" id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password"
+            onkeydown="if(event.key==='Enter')doLogin()">
+          <button class="pass-eye" onclick="togglePass('loginPass')" type="button">👁</button>
+        </div>
+      </div>
+      <button class="auth-btn" id="loginBtn" onclick="doLogin()">
+        <span id="loginBtnTxt">Login</span>
+      </button>
+      <div class="auth-switch">
+        Belum punya akun? <a onclick="showRegister()">Daftar sekarang</a>
+      </div>
+    </div>
+
+    <!-- Register Form -->
+    <div class="auth-card hidden" id="registerForm">
+      <div class="auth-card-title">Buat Akun Baru</div>
+      <div class="auth-card-sub">Daftar gratis, tunggu persetujuan admin, lalu mulai generate</div>
+      <div class="auth-error hidden" id="regError"></div>
+      <div class="auth-field">
+        <label>Nama</label>
+        <input class="auth-input" id="regName" type="text" placeholder="Nama kamu" autocomplete="name">
+      </div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input class="auth-input" id="regEmail" type="email" placeholder="email@kamu.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <div class="pass-wrap">
+          <input class="auth-input" id="regPass" type="password" placeholder="Min. 6 karakter" autocomplete="new-password"
+            onkeydown="if(event.key==='Enter')doRegister()">
+          <button class="pass-eye" onclick="togglePass('regPass')" type="button">👁</button>
+        </div>
+      </div>
+      <button class="auth-btn" id="regBtn" onclick="doRegister()">
+        <span id="regBtnTxt">Daftar</span>
+      </button>
+      <div class="auth-switch">
+        Sudah punya akun? <a onclick="showLogin()">Login</a>
+      </div>
+    </div>
+
+    <!-- Pending Card -->
+    <div class="auth-card hidden" id="pendingCard">
+      <div class="pending-icon">⏳</div>
+      <div class="auth-card-title" style="text-align:center">Menunggu Persetujuan</div>
+      <div class="auth-info" style="margin-top:16px">
+        <span>ℹ️</span>
+        <span>Akun kamu sudah terdaftar dan sedang menunggu persetujuan admin. Kamu akan bisa login setelah disetujui.</span>
+      </div>
+      <button class="auth-btn" onclick="showLogin()" style="margin-top:8px">Kembali ke Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div class="main-app hidden" id="mainApp" style="display:none">
+
+  <!-- Sidebar Overlay (mobile) -->
+  <div class="sb-overlay hidden" id="sbOverlay" onclick="toggleSidebar()"></div>
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <span class="sb-logo">⚡</span>
+      <div class="sb-info">
+        <div class="sb-name">ARKX Motion Pro</div>
+        <span class="sb-ver">V2</span>
+      </div>
+    </div>
+
+    <nav class="sb-nav">
+      <div class="sb-section">Generate</div>
+      <button class="sb-item active" data-page="generate" onclick="navTo('generate')">
+        <span class="sb-icon">🎬</span> Generate Video
+      </button>
+      <button class="sb-item" data-page="motion" onclick="navTo('motion')">
+        <span class="sb-icon">🎮</span> Motion Control
+      </button>
+
+      <div class="sb-section">Monitor</div>
+      <button class="sb-item" data-page="queue" onclick="navTo('queue')">
+        <span class="sb-icon">📋</span> Queue
+        <span class="sb-badge hidden" id="sbQBadge">0</span>
+      </button>
+      <button class="sb-item" data-page="history" onclick="navTo('history')">
+        <span class="sb-icon">📁</span> History
+      </button>
+
+      <div class="sb-section">Config</div>
+      <button class="sb-item" data-page="keys" onclick="navTo('keys')">
+        <span class="sb-icon">🔑</span> API Keys
+      </button>
+      <button class="sb-item" data-page="settings" onclick="navTo('settings')">
+        <span class="sb-icon">⚙️</span> Settings
+      </button>
+      <button class="sb-item" data-page="debug" onclick="navTo('debug')">
+        <span class="sb-icon">🐛</span> Debug
+      </button>
+
+      <div class="sb-section admin-only hidden">Admin</div>
+      <button class="sb-item admin-only hidden" data-page="admin" onclick="navTo('admin')">
+        <span class="sb-icon">👑</span> Admin Panel
+      </button>
+    </nav>
+
+    <div class="sb-user">
+      <div class="sb-avatar" id="sbAvatar">U</div>
+      <div class="sb-uinfo">
+        <div class="sb-uname" id="sbUname">User</div>
+        <div class="sb-urole" id="sbUrole">user</div>
+      </div>
+      <button class="sb-logout" onclick="doLogout()" title="Logout">⏻</button>
+    </div>
+  </aside>
+
+  <!-- ── Mobile Header ── -->
+  <header class="mob-header">
+    <button class="mob-menu" onclick="toggleSidebar()">☰</button>
+    <div class="mob-brand">ARKX Motion Pro</div>
+    <div class="mob-right">
+      <div class="ws-indicator" id="wsIndicator"></div>
+      <div class="key-count" id="keyCount">0 keys</div>
+    </div>
+  </header>
+
+  <!-- ── Main Content ── -->
+  <main class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="page-title" id="pageTitle">Generate Video</div>
+        <div class="page-sub" id="pageSub">Buat video AI dengan berbagai model</div>
+      </div>
+      <div class="topbar-right">
+        <div class="status-chip" id="workerChip">
+          <div class="chip-dot" id="wsChipDot"></div>
+          <span id="workerChipTxt">Connecting…</span>
+        </div>
+        <div class="status-chip">
+          <div class="chip-dot green"></div>
+          <span id="keyChipTxt">0 keys</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pages">
+      <div class="page active" id="page-generate"></div>
+      <div class="page hidden" id="page-motion"></div>
+      <div class="page hidden" id="page-queue"></div>
+      <div class="page hidden" id="page-history"></div>
+      <div class="page hidden" id="page-keys"></div>
+      <div class="page hidden" id="page-admin"></div>
+      <div class="page hidden" id="page-settings"></div>
+      <div class="page hidden" id="page-debug"></div>
+    </div>
+  </main>
+
+  <!-- ── Bottom Tabs (mobile) ── -->
+  <nav class="bottom-tabs">
+    <button class="btab active" data-page="generate" onclick="navTo('generate')">
+      <span class="btab-icon">🎬</span>
+      <span class="btab-label">Generate</span>
+    </button>
+    <button class="btab" data-page="motion" onclick="navTo('motion')">
+      <span class="btab-icon">🎮</span>
+      <span class="btab-label">Motion</span>
+    </button>
+    <button class="btab" data-page="queue" onclick="navTo('queue')">
+      <span class="btab-icon">📋</span>
+      <span class="btab-label">Queue</span>
+      <span class="btab-badge hidden" id="btabQBadge">0</span>
+    </button>
+    <button class="btab" data-page="history" onclick="navTo('history')">
+      <span class="btab-icon">📁</span>
+      <span class="btab-label">History</span>
+    </button>
+    <button class="btab" data-page="keys" onclick="navTo('keys')">
+      <span class="btab-icon">🔑</span>
+      <span class="btab-label">Keys</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- ══ VIDEO MODAL ══ -->
+<div class="modal hidden" id="videoModal" onclick="closeVideo()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <video class="modal-vid" id="resultVid" controls autoplay playsinline></video>
+    <div class="modal-actions">
+      <a class="btn-primary" id="dlBtn" href="#" download="arkx-video.mp4" target="_blank">⬇️ Download</a>
+      <button class="btn-ghost" onclick="closeVideo()">✕ Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast hidden" id="toast"></div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
