@@ -286,12 +286,13 @@ async function imageToVideo({ modelId, imageData, prompt, negPrompt, duration, r
       prompt_optimizer:  true,
     };
   } else if (m.provider === 'pixverse') {
-    // PixVerse V5: image URL, duration integer
+    // PixVerse V5: image_url (bukan image), duration integer 5 atau 8
     body = {
-      image:           imageData,
+      image_url:       imageData,
       prompt:          prompt || '',
       negative_prompt: negPrompt || '',
-      duration:        durInt(duration, m.maxDur),
+      duration:        parseInt(duration) >= 8 ? 8 : 5,
+      resolution:      '720p',
     };
   } else {
     body = {
