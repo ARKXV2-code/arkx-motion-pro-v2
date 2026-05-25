@@ -55,7 +55,7 @@ router.post('/i2v', upload.single('image'), async (req, res) => {
     let imageData = imageUrl || null;
     if (req.file) {
       validate(req.file, IMAGE_TYPES);
-      const needsUrl = ['kling3', 'kling26', 'wan', 'wan26', 'hailuo', 'seedance'];
+      const needsUrl = ['kling3', 'kling26', 'wan', 'wan26', 'hailuo', 'pixverse'];
       imageData = needsUrl.includes(modelCfg.provider)
         ? await uploadToUrl(req.file.buffer, req.file.originalname || 'image.jpg', req.file.mimetype)
         : await uploadToTemp(req.file.buffer, req.file.originalname || 'image.jpg', req.file.mimetype);
