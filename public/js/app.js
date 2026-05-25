@@ -341,8 +341,8 @@ function renderGenerate(el) {
       </select>
     </div>
     <div class="inp-group">
-      <label class="inp-label">🎚️ CFG Scale: <span class="slider-val" id="cfgVal">0.5</span></label>
-      <input type="range" id="cfg" min="0" max="1" step="0.1" value="0.5" class="slider"
+      <label class="inp-label">🎚️ CFG Scale: <span class="slider-val" id="cfgVal">0.7</span></label>
+      <input type="range" id="cfg" min="0" max="1" step="0.1" value="0.7" class="slider"
         oninput="$('cfgVal').textContent=this.value">
     </div>
   </div>

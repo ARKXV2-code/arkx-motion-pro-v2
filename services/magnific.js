@@ -345,11 +345,10 @@ async function waitDone(taskId, epPoll, queueId, onProgress) {
       if (['FAILED','failed','error','ERROR','CANCELLED'].includes(s.status)) throw new Error(s.error || 'Task failed');
     } catch (err) {
       // Kalau IP block saat polling — skip poll ini, coba lagi di iterasi berikutnya
-      if (err.message.includes('IP') || err.message.includes('block') || err.message.includes('suspicious') || err.message.includes('403')) {
+      if (err.message.includes('IP') || err.message.includes('block') || err.message.includes('suspicious') || err.message.includes('403') || err.message.includes('diblokir')) {
         consecutiveBlocks++;
-        log.warn(`⚠️ Poll blocked (${consecutiveBlocks}x), skip & retry in 10s…`);
-        if (consecutiveBlocks >= 12) throw new Error('Poll terus di-block setelah 12x. Task mungkin sudah selesai, cek History.');
-        await sleep(10000); // tunggu lebih lama sebelum retry
+        if (consecutiveBlocks >= 12) throw new Error('Poll terus di-block. Task mungkin sudah selesai, cek History.');
+        await sleep(10000);
         continue;
       }
       throw err;

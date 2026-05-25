@@ -78,22 +78,20 @@ async function call(endpoint, method = 'GET', body = null, extraHeaders = {}, at
 
     // ── 401 / 403 — key mati atau IP block ───────────────────
     if ([401, 403].includes(res.status)) {
-      log.error(`❌ ${res.status} — ${msg}`);
       const isIpBlock = msg.toLowerCase().includes('ip') ||
                         msg.toLowerCase().includes('block') ||
                         msg.toLowerCase().includes('suspicious');
 
       if (isIpBlock) {
-        // IP block — jangan mark key dead, retry supaya CF Worker pakai edge node lain
-        log.warn(`⛔ IP block detected, retry via CF Worker (attempt ${attempt+1}/${MAX_RETRY})…`);
+        // IP block — jangan mark key dead, retry saja (CF Worker ganti edge node)
         if (attempt < MAX_RETRY) {
-          await sleep(2000 * (attempt + 1)); // makin lama makin tunggu
+          await sleep(2000 * (attempt + 1));
           return call(endpoint, method, body, extraHeaders, attempt + 1);
         }
-        throw new Error(`⛔ IP diblokir Magnific setelah ${MAX_RETRY} retry. Coba ganti CF Worker.`);
+        throw new Error(`⛔ IP diblokir setelah ${MAX_RETRY} retry.`);
       }
 
-      // Key invalid/expired — mark dead dan coba key lain
+      log.error(`❌ ${res.status} — ${msg}`);
       keys.record(keyObj.id, false, ms, `${res.status}: ${msg}`);
       keys.markDead(keyObj.id, `HTTP ${res.status}: ${msg}`);
       if (attempt < MAX_RETRY) {
